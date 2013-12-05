@@ -1,0 +1,1228 @@
+#include "Line.clc"
+#include "Token.clc"
+#include "Scope.clc"
+#include "CLObject.clc"
+#include "CLString.clc"
+#include "Constants.clc"
+#include "ClassElements.clc"
+#include "CLObjectList.clc"
+#include "CLStringObjectList.clc"
+
+
+Analyzer:CLObject
+{
+
+    Constants* constants;
+
+
+	// extracts code elements
+	
+	void organizeTokens(	CLObjectList* theLines ,
+							ClassElements* theElements ,
+                            CLObjectList* theParentNamesList )
+	{
+
+		long depth                  = 0;
+		CLObjectList* methodLines	= NULL;
+        
+        for ( CLObject* object : theLines )
+        {
+
+			Line* line = ( Line* ) object;
+            
+			if ( line.type == kLineTypeGeneral  )
+			{
+			
+				analyzeGeneral( line , 
+								depth , 
+								&methodLines ,
+								theElements.memberNamesList , 
+								theElements.memberTokensList , 
+								theElements.methodNamesList , 
+								theElements.methodTokensList );
+
+			}
+			else if ( line.type == kLineTypeSetting )
+			{
+
+				analyzeSetting( line , 
+								depth , 
+								&methodLines ,
+								theElements.usedClassNamesList ,
+								theElements.memberNamesList , 
+								theElements.memberTokensList , 
+								theElements.settingNamesList , 
+								theElements.settingTokensList );
+                
+			}
+            else if ( line.type == kLineTypeClassDef )
+            {
+			
+				analyzeClassDef( line ,
+								 theParentNamesList ,
+								 theElements.usedClassNamesList );
+
+            }
+			else if ( line.type == kLineTypeBlockStart ) 
+			{
+
+                // add bracket to method
+
+				++depth;
+				if ( depth > 2 ) methodLines.addObject( ( CLObject* ) line.tokens );
+                
+			}
+			else if ( line.type == kLineTypeBlockEnd )
+			{
+			
+                // add bracket to method
+
+				if ( depth > 2 ) methodLines.addObject( ( CLObject* ) line.tokens );
+				--depth;
+                
+			}
+            
+		}
+		
+		if ( methodLines != NULL ) methodLines:release( );
+        
+	}
+    
+
+	// analyze general statement
+	
+	void analyzeGeneral( Line*			 theLine , 
+						 long			 theDepth ,
+						 CLObjectList** theMethodLines ,
+						 CLObjectList*  theMemberNames ,
+						 CLObjectList*  theMembers ,
+						 CLObjectList*  theMethodNames ,
+						 CLObjectList*  theMethods )
+	{
+	
+		CLObjectList* methodLines = *theMethodLines;
+
+		if ( theDepth > 1 )
+		{
+		
+			// store tokens in method
+		
+			methodLines.addObject( ( CLObject* ) theLine.tokens );
+						
+		}
+		else if ( theDepth == 1 )
+		{
+
+            void*  lastData  = (theLine.tokens.last)->data;
+			Token* lastToken = ( Token* ) lastData;
+			
+			if ( lastToken.mainType == kTokenMainTypeSymbol && (lastToken.text.head)->character == ';' )
+			{
+
+				// member definition line, name is last token
+				
+				CLString* name = extractMemberName( theLine.tokens );
+								
+				if ( name != NULL )
+				{
+				
+					// store name and member tokens
+				
+					theMemberNames.addObject( ( CLObject* ) name );
+					theMembers.addObject( ( CLObject* ) theLine.tokens );
+						
+				}
+
+			}
+			else
+			{
+			
+				// method definition line, name is token before bracket
+				
+				CLString* name = extractMethodName( theLine.tokens );
+				
+				if ( name != NULL )
+				{
+				
+					// create new method
+
+					if ( methodLines != NULL ) methodLines.release( );
+					
+					*theMethodLines = CLObjectList:alloc( );	// needs release
+					methodLines = *theMethodLines;
+					
+					methodLines.init( );
+					methodLines.addObject( ( CLObject* ) theLine.tokens );
+					
+					// store name and method tokens
+
+					theMethodNames.addObject( ( CLObject* ) name );
+					theMethods.addObject( ( CLObject* ) methodLines );
+
+				}
+			
+			}
+			
+		}
+	
+	}
+    
+	
+	// analyze setting statement
+	
+	void analyzeSetting( Line*           theLine ,
+						 long            theDepth ,
+						 CLObjectList** theMethodLines ,
+						 CLObjectList*  theClassPool ,
+						 CLObjectList*  theMemberNames ,
+						 CLObjectList*  theMembers ,
+						 CLObjectList*  theSettingNames ,
+						 CLObjectList*  theSettings )
+	{
+
+		if ( theDepth == 0 )
+		{
+		
+			// in 0 depth, storing settings and names
+
+			theSettings.addObject( ( CLObject* ) theLine.tokens );
+			theSettingNames.addObject( ( CLObject* ) theLine.text );
+
+			// extracting class name if exists
+			
+			CLString* name = extractClassName( theLine.tokens );
+			if ( name != NULL )
+			{
+				CLStringObjectList:addStringAsUnique( NULL , name , theClassPool );
+				name:release( );
+			}
+
+		}
+		else if ( theDepth == 1 )
+		{
+
+			// in 1 depth, adding fake member definition row as setting
+			
+			Token*			token		= Token:alloc( );			// needs release
+			CLObjectList*	tokensList = CLObjectList:alloc( );	// needs release
+			
+			token.init( );
+			tokensList.init( );
+			
+			token.mainType = kTokenMainTypeSetting;
+			token.setText( theLine.text );
+			tokensList.addObject( ( CLObject* ) token );
+			
+			theMembers.addObject( ( CLObject* ) tokensList );
+			theMemberNames.addObject( ( CLObject* ) constants.settingString );
+
+			token:release( );
+			tokensList:release( );
+			
+		}
+		else if ( theDepth > 1 )
+		{
+		
+			// above depth 1, simply adding whole line as a setting token
+			
+			Token*			token		= Token:alloc( );			// needs release
+			CLObjectList*	tokensList = CLObjectList:alloc( );	// needs release
+			
+			token.init( );
+			tokensList.init( );
+			
+			token.mainType = kTokenMainTypeSetting;
+			token.setText( theLine.text );
+			tokensList.addObject( ( CLObject* ) token );
+
+			CLObjectList* methodLines = *theMethodLines;
+			
+			methodLines.addObject( ( CLObject* ) tokensList );
+			
+			token:release( );
+			tokensList:release( );
+			
+		}
+			
+	}
+	
+	
+	// analyze class definition statement
+	
+	void analyzeClassDef(	Line*		   theLine , 
+							CLObjectList* theParentClassNamesList , 
+							CLObjectList* theUsedClassNamesList )
+	{
+
+		// in case of class definition, storing compositing classes in names and pool
+		
+		for ( CLObject* object : theLine.tokens )
+		{
+
+			Token* oneToken = ( Token* ) object;
+			
+			if ( oneToken.mainType == kTokenMainTypeWord ) 
+			{
+			
+				theParentClassNamesList:addObject( ( CLObject* ) oneToken.text );
+				theUsedClassNamesList:addObject( ( CLObject* ) oneToken.text );
+				
+			}
+
+		}
+	
+	}
+	
+    
+    // extracts class name from line tokens if there is a clc extension
+    
+    CLString* extractClassName( CLObjectList* theTokens )
+    {
+        
+        CLString* result = NULL;
+		
+		for ( CLObject* object : theTokens )
+        {
+
+            Token* token = ( Token* ) object;
+            
+            if ( token.mainType == kTokenMainTypeString && token.text.indexOfString( constants.clcString ) > -1 )
+            {
+
+                result = token.text.stringByRemovingExtension( );	// needs release
+                break;
+                
+            }
+            
+        }
+        
+        return result;
+        
+    }
+    
+    
+    // extracts member name from line tokens
+    // checking [ ) ; symbols, possible situations :
+	// Scene*	scene;    
+    // int      intArray[10];
+    // void     (*updateFunction)(ShaderP2*);
+    // void     (*updateFunctions[8])(ShaderP2*);
+    
+    CLString* extractMemberName( CLObjectList* theTokens )
+    {
+        
+		CLString* lastWord = NULL;
+		
+		for ( CLObject* object : theTokens )
+		{
+            
+			Token* token = ( Token* ) object;
+			
+			if ( token.mainType == kTokenMainTypeSymbol )
+            {
+
+                if ( ( token.text.head )->character == ';' || 
+                     ( token.text.head )->character == '[' || 
+                     ( token.text.head )->character == ')') return lastWord;
+
+            }
+			else if ( token.mainType == kTokenMainTypeWord ) lastWord = token.text;
+            
+		}
+		
+		return NULL;
+        
+    }
+
+
+	// extracts method name from line tokens
+    
+	CLString* extractMethodName( CLObjectList* theTokens )
+	{
+        
+		CLString* lastWord = NULL;
+
+		for ( CLObject* object : theTokens )
+		{
+            
+			Token* token = ( Token* ) object;
+			
+			if ( token.mainType == kTokenMainTypeSymbol && (token.text.head)->character == '(' ) return lastWord;
+			else if ( token.mainType == kTokenMainTypeWord ) lastWord = token.text;
+
+		}
+		
+		return NULL;
+        
+	}
+
+	
+	// analyzing members, detecting classes, instances and member variables
+    
+	void analyzeMembers( ClassElements* theElements )
+	{
+
+		CLObjectList* members		  = NULL;
+		Token*		   lastToken	  = NULL;
+		Token*		   lastClassToken = NULL;
+		
+		for ( CLObject* membersObject : theElements.memberTokensList )
+		{
+		
+			members			= ( CLObjectList* ) membersObject;
+
+			lastToken		= NULL;
+			lastClassToken	= NULL;
+			
+			for ( CLObject* memberObject : members )
+			{
+			
+				Token* token = ( Token* ) memberObject;
+				
+				if ( token.mainType == kTokenMainTypeWord )
+				{
+				
+					// checking class identity
+				
+					long long index = CLStringObjectList:indexOfString( NULL , token.text , theElements.usedClassNamesList );
+					
+					if ( index > -1 )
+					{
+
+						token.setClassId( token.text );
+						token.subType = kTokenSubTypeClass;
+                        
+                        // remove from unused chain
+                    
+                        long long unusedIndex = CLStringObjectList:indexOfString( NULL , token.text , theElements.unusedClassNamesList );
+                        if ( unusedIndex > -1 ) theElements.unusedClassNamesList.removeObject( theElements.unusedClassNamesList.objectAtIndex( unusedIndex ) );
+						
+						lastClassToken = token;
+
+					}
+				
+				}
+				else if ( token.mainType == kTokenMainTypeSymbol )
+				{
+				
+					// looking for member names
+				
+					if ( ( token.text.head )->character == ';' || 
+						 ( token.text.head )->character == '[' || 
+						 ( token.text.head )->character == ')')
+					{
+
+						lastToken.subType  = kTokenSubTypeVariable;
+						lastToken.isMember = 1;
+						
+						if ( lastClassToken != NULL ) 
+						{
+						
+							lastToken.setClassId( lastClassToken.text );
+							lastToken.subType = kTokenSubTypeInstance;
+							
+						}
+					
+					}
+				
+				}
+				
+				lastToken  = token;
+								
+			}
+			
+		}
+	
+	}
+    
+
+	// analyze method blocks, detect known token types
+
+	void analyzeMethods( ClassElements* theElements )
+	{
+	
+		// create "self" instance with actual class
+
+		Token* selfToken = Token:alloc( );	// needs release
+		selfToken.init( );
+		selfToken.setClassId( theElements.className );
+		selfToken.mainType	 = kTokenMainTypeWord;
+		selfToken.subType	 = kTokenSubTypeInstance;
+		
+		// iterate through method blocks
+
+        CLObjectList* scopeList = CLObjectList:alloc( );	// needs release
+		scopeList:init( );
+		
+		for ( CLObject* object : theElements.methodTokensList )
+		{
+
+			CLObjectList* method = ( CLObjectList* ) object;
+			
+			// create zero-level scope
+
+            Scope* scope  = Scope:alloc( );
+            scope:init( );
+            scope.type = kScopeTypeNormal;
+			scope.instancesList.addObject( ( CLObject* ) selfToken );
+			scope.instanceNamesList.addObject( ( CLObject* ) constants.selfString );
+            
+            scopeList:addObject( ( CLObject* ) scope );
+			
+			// iterate through lines
+
+			struct CLLink* lineLink = method.head;
+			
+			while ( lineLink != NULL )
+			{
+
+				CLObjectList* line = ( CLObjectList* ) lineLink->data;
+				
+				// printf( "\nMETHOD" ); line.describe( );
+				
+				if ( lineLink == method.head ) 
+				{
+				
+					analyzeMethodDef( line ,
+									  scopeList ,
+                                      theElements );
+
+				}
+				else 
+				{
+                
+					analyzeLine( line ,
+                                      scopeList ,
+									  theElements );
+												
+				}
+			
+				lineLink = lineLink->next;
+				
+			}
+
+            scopeList:removeObject( ( CLObject* ) scope );
+            scope:release( );
+			
+		}
+		
+		// release
+		
+		selfToken:release( );
+		scopeList:release( );
+	
+	}
+	
+
+	// analyzing method definition, detecting classes, instances and name
+	
+	void analyzeMethodDef(	CLObjectList* theLine ,
+							CLObjectList* theScopeList ,
+                            ClassElements* theElements )
+	{
+	
+        void*           scopeData       = (theScopeList.last)->data;
+        Scope*          scope           = ( Scope* ) scopeData;
+		Token*			lastToken		= NULL;
+		Token*			lastClassToken 	= NULL;
+		
+		for ( CLObject* object : theLine )
+		{
+		
+			Token* token = ( Token* ) object;
+			
+			if ( token.mainType == kTokenMainTypeWord )
+			{
+			
+				// checking class identity
+
+                long long index = CLStringObjectList:indexOfString( NULL , token.text , theElements.usedClassNamesList );
+
+				if ( index > -1 )
+				{
+
+					token.subType = kTokenSubTypeClass;
+					token.setClassId( token.text );
+					
+					lastClassToken = token;
+
+                    // remove from unused chain
+                
+                    long long unusedIndex =
+						CLStringObjectList:indexOfString(
+							NULL ,
+							token.text ,
+							theElements.unusedClassNamesList );
+							
+                    if ( unusedIndex > -1 ) theElements.unusedClassNamesList.removeObjectAtIndex( unusedIndex );
+
+				}
+				else
+				{
+				
+					// checking instance in arguments
+				
+					if ( lastClassToken != NULL )
+					{
+					
+						token.subType	 = kTokenSubTypeInstance;
+						token.setClassId( lastClassToken.text );
+						
+						scope.instancesList.addObject( ( CLObject* ) token );
+						scope.instanceNamesList.addObject( ( CLObject* ) token.text );
+
+						lastClassToken   = NULL;
+					
+					}
+				
+				}
+							
+			}
+			else if ( token.mainType == kTokenMainTypeSymbol && lastToken != NULL )
+			{
+
+				// it is the method name or a variable
+			
+				if ( lastToken.mainType == kTokenMainTypeWord )
+				{
+				
+					if ( (token.text.head)->character == '(' )
+					{
+					
+						// method name
+
+						lastToken.subType = kTokenSubTypeMethod;
+						lastToken.setClassId( theElements.className );
+
+					}
+
+					if ( (token.text.head)->character == ',' ||
+						 (token.text.head)->character == '[' || 
+						 (token.text.head)->character == ')' )
+					{
+					
+						// variable
+
+						lastToken.subType = kTokenSubTypeVariable;
+
+					}
+					
+				}
+				
+			}
+			
+			lastToken = token;
+			
+		}
+	
+	}
+	
+
+	// analyzing statement definition, detecting classes, instances and name	
+	// 1. checking class identity, if class, next word is an instance
+	// 2. in case of new word, checking memberness, instanceness or methodness
+	// 3. in case of dotted word, checking methodness
+	// !!! new instance chains needed with every new block
+
+	void analyzeLine(	CLObjectList* theLine , 
+						CLObjectList* theScopeList ,
+						ClassElements* theElements )
+	{
+	
+		struct CLLink* tokenLink    = theLine.head;
+        CLObject*      scopeData    = theScopeList.lastObject( );
+        Scope*         scope        = ( Scope* ) scopeData;
+		char		   structList	= 0;
+
+		while ( tokenLink != NULL )
+		{
+
+			Token* token = ( Token* ) tokenLink->data;
+            
+            if ( token.subType == kTokenSubTypeUndefined )
+            {
+            
+                if ( token.mainType == kTokenMainTypeWord )
+                {
+                
+                    if ( structList == 0 )
+                    {
+
+                        // if not in struct accessor chain, look for classes, members, instances, class methods
+
+                        char      isFor         = constants.forString.equals( token.text );
+                        char      isAlloc       = constants.allocString.equals( token.text );
+                        long long classIndex	= CLStringObjectList:indexOfString( NULL , token.text , theElements.usedClassNamesList );
+                        long long methodIndex	= CLStringObjectList:indexOfString( NULL , token.text , theElements.methodNamesList );
+                        long long memberIndex	= CLStringObjectList:indexOfString( NULL , token.text , theElements.memberNamesList );
+                        long long instanceIndex = CLStringObjectList:indexOfString( NULL , token.text , scope.instanceNamesList );
+
+                        // printf( "\n classIndex %i methodIndex %i memberIndex %i instanceIndex %i" , classIndex , methodIndex , memberIndex , instanceIndex );
+                        
+                        if      ( isFor == 1		 ) analyzeForEachToken( &tokenLink , scope , theElements.memberNamesList , theElements.usedClassNamesList );
+                        else if ( isAlloc == 1		 ) analyzeAllocToken( token , theLine );
+                        else if ( classIndex > -1	 ) analyzeClassToken( &tokenLink , scope , theElements );
+                        else if ( methodIndex > -1	 ) analyzeMethodToken( &tokenLink );
+                        else if ( memberIndex > -1	 ) analyzeMemberToken( &tokenLink , memberIndex , theElements.memberTokensList );
+                        else if ( instanceIndex > -1 ) analyzeInstanceToken( &tokenLink , instanceIndex , scope.instancesList );
+                    
+                    }
+                    else structList = 0;
+                
+                }			
+                else if ( token.mainType == kTokenMainTypeSymbol )
+                {
+                
+                    if ( (token.text.head)->character == '-' )
+                    {
+					
+						// checking for struct accessor
+
+                        if ( tokenLink->next != NULL )
+                        {
+
+                            Token* nextToken = ( Token* ) tokenLink->next->data;
+                            if ( nextToken->mainType == kTokenMainTypeSymbol && (nextToken.text.head)->character == '>' )
+                            {
+							
+                                token.subType	  = kTokenSubTypeStructAccessor;
+                                nextToken.subType = kTokenSubTypeStructAccessor;
+                                structList		  = 1;
+                                tokenLink		  = tokenLink->next;
+								
+                            }
+                            
+                        }
+                    
+                    }
+                    else
+                    {
+					
+						// checking for scopes
+                    
+                        if ( (token.text.head)->character == '{' )
+                        {
+						
+                            // add new scope level
+							
+                            Scope* oneScope  = Scope:alloc( );
+							oneScope:init( );
+							
+							// set scope type and link id
+							
+                            oneScope.type = scope.nextScopeType;
+                            if ( scope.nextScopeLink != NULL )
+                            {
+                                oneScope.setScopeLink( scope.nextScopeLink );
+                                token.mainType = kTokenMainTypeUndefined;
+                            }
+							
+							// add all instances from parent scope
+							
+                            oneScope.instancesList.addObjectsInObjectList( scope.instancesList );
+                            oneScope.instanceNamesList.addObjectsInObjectList( scope.instanceNamesList );
+							
+                            theScopeList:addObject( ( CLObject* ) oneScope );
+                            scope = oneScope;
+
+                        }
+                        else if ( (token.text.head)->character == '}' )
+                        {
+													
+							// set link id of closing bracket, creator adds for each ending
+							
+                            if ( scope.scopeLink != NULL ) token.setLinkId( scope.scopeLink );
+							
+                            // remove last scope level
+
+                            theScopeList:removeObject( ( CLObject* ) scope );
+                            scope:release( );
+							
+                            scopeData = theScopeList.lastObject( );
+                            scope = ( Scope* ) scopeData;
+                            scope.nextScopeType = kScopeTypeNormal;
+                            scope.setNextScopeLink( NULL );
+                            
+                        }
+
+                        structList  = 0;
+
+                    }
+                
+                }
+                
+            }
+			
+			tokenLink = tokenLink->next;
+			
+		}
+		
+	}
+
+
+    // checking for for each loop
+    // for ( void* rect : buttons ) { }
+    //
+    // struct CLLink* link0=self->buttons->head;while( link0!=NULL){void* data=link0->data;
+    // struct GLRectPT22*buttonRect=data;
+    // link0=link0->next;}
+    
+    void analyzeForEachToken(	struct CLLink**		theLinkAddress ,
+								Scope*				theScope ,
+								CLObjectList*  	theMemberNames ,
+								CLObjectList*  	theClassNames )
+    {
+	
+        struct CLLink* tokenLink = *theLinkAddress;
+        Token* token = ( Token* ) tokenLink->data;
+        
+        // checking for available following tokens
+
+        if ( tokenLink->next != NULL &&
+             tokenLink->next->next != NULL &&
+             tokenLink->next->next->next != NULL &&
+             tokenLink->next->next->next->next != NULL &&
+             tokenLink->next->next->next->next->next != NULL &&
+             tokenLink->next->next->next->next->next->next != NULL &&
+             tokenLink->next->next->next->next->next->next->next != NULL )
+        {
+        
+            // checking for double colon
+        
+            Token* dbleToken = ( Token* ) tokenLink->next->next->next->next->next->data;
+            
+            if ( (dbleToken.text.head)->character == ':' )
+            {
+            
+                // for cycle is a for each loop
+            
+                Token* openToken  = ( Token* ) tokenLink->next->data;
+                Token* typeToken  = ( Token* ) tokenLink->next->next->data;
+                Token* starToken  = ( Token* ) tokenLink->next->next->next->data;
+                Token* nameToken  = ( Token* ) tokenLink->next->next->next->next->data;
+                Token* chainToken = ( Token* ) tokenLink->next->next->next->next->next->next->data;
+
+                CLString* classId		= CLString:alloc( );	// needs release
+                CLString* containerId	= CLString:alloc( );	// needs release
+                CLString* linkIdString	= CLString:alloc( );	// needs release
+
+				classId:init( );
+				containerId:init( );
+                linkIdString:initWithCString( "link" );
+                
+                // prepare container id
+
+                long long chainMemberIndex = CLStringObjectList:indexOfString( NULL , chainToken.text , theMemberNames );
+                if ( chainMemberIndex > -1 ) containerId:appendCString( "self->" );
+                containerId:appendString( chainToken.text );
+
+                long long classIndex = CLStringObjectList:indexOfString( NULL , typeToken.text , theClassNames );
+                if ( classIndex > -1 ) classId:appendCString( "struct " );
+                classId:appendString( typeToken.text );
+
+                if ( tokenLink->next->next->next->next->next->next->next != NULL )
+                {
+                    // collect instance chain for collection
+
+                    struct CLLink* chainLink = tokenLink->next->next->next->next->next->next->next;
+
+                    while ( chainLink != NULL )
+                    {
+
+                        Token* oneToken = ( Token* ) chainLink->data;
+                        
+                        if ( oneToken.mainType == kTokenMainTypeWord )
+                        {
+                            containerId:appendString( oneToken.text );
+                            oneToken.mainType = kTokenMainTypeUndefined;
+                        }
+                        else if ( oneToken.mainType == kTokenMainTypeSymbol && (oneToken.text.head)->character == '.' )
+                        {
+                            containerId:appendCString( "->" );
+                            oneToken.mainType = kTokenMainTypeUndefined;
+                        }
+                        else
+                        {
+                            oneToken.mainType = kTokenMainTypeUndefined;
+                            break;
+                        }
+                        
+                        chainLink = chainLink->next;
+                        
+                    }
+                    
+                    // jump to final token
+                    
+                    *theLinkAddress = chainLink;
+                
+                }
+
+                // telling creator to miss these tokens
+
+                openToken.mainType  = kTokenMainTypeUndefined;
+                typeToken.mainType  = kTokenMainTypeUndefined;
+                starToken.mainType  = kTokenMainTypeUndefined;
+                nameToken.mainType  = kTokenMainTypeUndefined;
+                dbleToken.mainType  = kTokenMainTypeUndefined;
+                chainToken.mainType = kTokenMainTypeUndefined;
+
+                // prepare link id
+
+                char decimal[5];
+				sprintf( decimal ,"%lu" , constants.linkId++ );
+                linkIdString:appendCString( decimal );
+
+                // setup token
+                
+                token.subType = kTokenSubTypeForEachCycle;
+                token.setLinkId( linkIdString );
+                token.setClassId( classId );
+                token.setVariableId( nameToken.text );
+                token.setContainerId( containerId );
+                
+                // setup actual scope to finish as a for each scope
+                
+                theScope.nextScopeType = kScopeTypeForEach;
+                theScope.setNextScopeLink( linkIdString );
+				
+				// release
+				
+				classId:release( );
+				containerId:release( );
+				linkIdString:release( );
+            
+            }
+        
+        }
+
+    }
+	
+	
+	// check for class id availability
+	
+	void analyzeAllocToken( Token*			theToken ,
+							CLObjectList*	theLine )
+	{
+	
+		if ( theToken.classId == NULL )
+		{
+		
+			printf( "\nWARNING : missing includes for : " );
+			theLine.describe( );
+			
+		}
+	
+	}
+
+
+    // check for type declaration, explicit call, explicit accessor call, type casting
+    // CLObject* object
+    // CLObject:alloc( );
+    // CLObject:retain( );
+    // ( CLObject* ) object;
+
+    void analyzeClassToken(	struct CLLink**		theLinkAddress ,
+							Scope*				theScope ,
+							ClassElements*		theElements )
+    {
+
+        struct CLLink* tokenLink = *theLinkAddress;
+        Token* token = ( Token* ) tokenLink->data;
+
+        // look for class identity
+
+        token.setClassId( token.text );
+        token.subType = kTokenSubTypeClass;
+
+        // remove from unused chain
+    
+        long long unusedIndex = CLStringObjectList:indexOfString( NULL , token.text , theElements.unusedClassNamesList );
+        if ( unusedIndex > -1 ) theElements.unusedClassNamesList.removeObjectAtIndex( unusedIndex );
+
+        // checking related instance. if its casting, then null returned
+
+        if ( tokenLink->next	   != NULL &&
+             tokenLink->next->next != NULL )
+        {
+
+            Token* nextToken = ( Token* ) tokenLink->next->data;
+            Token* wordToken = ( Token* ) tokenLink->next->next->data;
+
+            if ( (nextToken.text.head)->character == ':' && wordToken.mainType == kTokenMainTypeWord )
+            {
+            
+                // explicit class call
+
+                token.subType     = kTokenSubTypeExplicitCallClass;
+                nextToken.subType = kTokenSubTypeExplicitAccessor;
+                wordToken.subType = kTokenSubTypeMethod;
+
+                // jump to final token
+                
+                *theLinkAddress = tokenLink->next->next;
+                
+                if ( wordToken.text.equals( constants.allocString ) == 0 )
+                {
+                
+                    // not an alloc call
+
+                    wordToken.subType = kTokenSubTypeExplicitClassCall;
+                    wordToken.setClassId( token.text );
+                    Token* openToken = NULL;
+                    
+                    // remove opentoken from creator
+                    
+                    if ( tokenLink->next->next->next != NULL )
+                    {
+                    
+                        openToken = ( Token* ) tokenLink->next->next->next->data;
+                        openToken.mainType = kTokenMainTypeUndefined;
+                        *theLinkAddress = tokenLink->next->next->next;
+                        
+                    }
+                    
+                    // check for NULL as first parameter
+                    
+                    if ( tokenLink->next->next->next->next != NULL )
+                    {
+                    
+                        Token* nullToken = ( Token* ) tokenLink->next->next->next->next->data;
+                        if ( nullToken.text.equals( constants.nullString ) == 1 )
+                        {
+                            // revert in case of null
+                            wordToken.subType = kTokenSubTypeMethod;
+                            openToken.mainType = kTokenMainTypeSymbol;
+                            *theLinkAddress = tokenLink->next->next->next->next;
+                        }
+                        
+                    }
+
+                }
+
+            }
+            else if ( (nextToken.text.head)->character == '*' && wordToken.mainType == kTokenMainTypeWord )
+            {
+            
+                // type declaration
+
+				wordToken.setClassId( token.text );
+                wordToken.subType = kTokenSubTypeInstance;
+
+                theScope.instancesList.addObject( ( CLObject* ) wordToken );
+                theScope.instanceNamesList.addObject( ( CLObject* ) wordToken.text );
+
+                *theLinkAddress = tokenLink->next->next;
+                
+            }
+            else if ( (nextToken.text.head)->character == '*' && (wordToken.text.head)->character == ')' )
+            {
+            
+                // casting
+        
+                token.subType      = kTokenSubTypeCast;
+                nextToken.mainType = kTokenMainTypeUndefined;
+                wordToken.mainType = kTokenMainTypeUndefined;
+
+                *theLinkAddress = tokenLink->next->next;
+                    
+            }
+        
+        }
+        
+    }
+
+
+	// analyzing method
+
+    void analyzeMethodToken( struct CLLink** theLinkAddress )
+	{
+
+        struct CLLink* tokenLink = *theLinkAddress;
+        Token* token = ( Token* ) tokenLink->data;
+	
+		token.subType = kTokenSubTypeLocalCall;
+		
+		if ( tokenLink->next != NULL )
+		{
+
+			Token* nextToken = ( Token* ) tokenLink->next->data;
+			
+			// check for method opening or reference
+			
+			if ( nextToken->mainType == kTokenMainTypeSymbol && (nextToken.text.head)->character == '(' )
+			{
+				// hide method opening from creator
+				nextToken->mainType = kTokenMainTypeUndefined;
+			}
+			else token.subType = kTokenSubTypeLocalCallReference;
+			
+		}
+		else token.subType = kTokenSubTypeLocalCallReference;
+		
+	}
+
+
+    // analyzing member and member chain
+
+    void analyzeMemberToken( struct CLLink**	theLinkAddress ,
+							 long				theMemberIndex ,
+							 CLObjectList*		theMembers )
+    {
+
+        struct CLLink* tokenLink = *theLinkAddress;
+        Token* token = ( Token* ) tokenLink->data;
+    
+        // member identity
+
+        token.isMember = 1;
+        token.subType  = kTokenSubTypeVariable;
+
+        // get related member descriptor
+    
+        CLObject* 		lineObject	= theMembers.objectAtIndex( theMemberIndex );
+        CLObjectList*  lineList	= ( CLObjectList* ) lineObject;
+
+        // check if its an instance
+		
+		for ( CLObject* object : lineList )
+        {
+
+            Token* oneToken = ( Token* ) object;
+            if ( oneToken.text.equals( token.text ) && oneToken.subType == kTokenSubTypeInstance )
+            {
+
+                token.setClassId( oneToken.classId );
+                token.subType = kTokenSubTypeInstance;
+            
+            }
+            
+        }
+        
+        analyzeInstanceList( theLinkAddress );
+
+    }
+
+
+    // analyzing instance and instance chain
+
+    void analyzeInstanceToken( struct CLLink**	theLinkAddress ,
+							   long				theInstanceIndex ,
+							   CLObjectList*	theInstancesList )
+    {
+
+        struct CLLink* tokenLink = *theLinkAddress;
+        Token* token = ( Token* ) tokenLink->data;
+
+        // instance identity
+        
+        CLObject* instanceObject = theInstancesList.objectAtIndex( theInstanceIndex );
+        Token*    instanceToken  = ( Token* ) instanceObject;
+
+        token.subType	 = kTokenSubTypeInstance;
+        token.setClassId( instanceToken.classId );
+        
+        analyzeInstanceList( theLinkAddress );
+
+    }
+    
+    
+    // analyze instance chain
+    // look for other chain tags, implicit and explicit calls
+    // instance.akarmi.akarmi
+    // instance.akarmi.akarmi.call( )
+    // instance:call( )
+    
+    void analyzeInstanceList( struct CLLink** theLinkAddress )
+    {
+
+        struct CLLink* tokenLink = *theLinkAddress;
+        Token* token			 = ( Token* ) tokenLink->data;
+        Token* startToken		 = token;
+        
+        if ( token.subType == kTokenSubTypeInstance )
+        {
+            
+            // check for following members or calls
+            
+            char isImplicit = 0;
+            CLString* chain = CLString:alloc( );	// needs release
+			chain:init( );
+            if ( token.isMember == 1 ) chain:appendCString( "self->" );
+            chain:appendString( token.text );
+
+            tokenLink = tokenLink->next;
+
+            while ( tokenLink != NULL )
+            {
+            
+                token = ( Token* ) tokenLink->data;
+                
+                if ( token.mainType == kTokenMainTypeSymbol && (token.text.head)->character == ':' )
+                {
+                
+                    // explicit call
+                    
+                    token.subType		= kTokenSubTypeExplicitAccessor;
+                    token.mainType		= kTokenMainTypeUndefined;
+                    isImplicit			= 0;
+                    startToken.mainType = kTokenMainTypeUndefined;
+                
+                }
+                else if ( token.mainType == kTokenMainTypeSymbol && (token.text.head)->character == '.' )
+                {
+                
+                    // explicit call
+                    
+                    token.subType = kTokenSubTypeImplicitAccessor;
+                    isImplicit	  = 1;
+                    chain:appendCString( "->" );
+                
+                }
+                else if ( token.mainType == kTokenMainTypeWord )
+                {
+                
+                    // chain member
+                    
+                    token.subType = kTokenSubTypeUndefined;
+                    
+                    // check for call
+
+                    if ( tokenLink->next != NULL )
+                    {
+
+                        Token* nextToken = ( Token* ) tokenLink->next->data;
+                        if ( nextToken.mainType == kTokenMainTypeSymbol && (nextToken.text.head)->character == '(' )
+                        {
+                        
+                            nextToken.mainType = kTokenMainTypeUndefined;
+                        
+                            if ( isImplicit == 1 ) token.subType = kTokenSubTypeImplicitCall;
+                            else token.subType = kTokenSubTypeExplicitCall;
+                        
+                        }
+                        
+                    }
+
+                    if ( token.subType == kTokenSubTypeUndefined ) chain:appendString( token.text );
+                    else
+                    {
+                        token.setInstanceList( chain );
+                        token.setClassId( startToken.classId );
+                    }
+                
+                }
+                else break;
+            
+                tokenLink = tokenLink->next;
+            
+            }
+
+            *theLinkAddress = tokenLink;
+			
+			chain:release( );
+            
+        }
+		    
+    }
+
+}

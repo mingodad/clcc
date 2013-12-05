@@ -1,0 +1,76 @@
+#include "CLObject.clc"
+#include "CLString.clc"
+
+
+Constants:CLObject
+{
+
+    long        linkId;
+
+    CLString*   clcString;
+    CLString*   forString;
+    CLString*   selfString;
+    CLString*   nullString;
+    CLString*   allocString;
+    CLString*   settingString;
+
+	CLString*	ifdefString;
+	CLString*	endifString;
+	CLString* 	classString;
+
+
+    void init( )
+    {
+
+        CLObject:init( self );
+        
+        linkId = 0;
+        
+		clcString = CLString:alloc( );      // needs release
+		clcString:initWithCString( "clc" );
+
+		forString = CLString:alloc( );      // needs release
+		forString:initWithCString( "for" );
+
+		selfString = CLString:alloc( );      // needs release
+		selfString:initWithCString( "self" );
+
+		nullString = CLString:alloc( );      // needs release
+		nullString:initWithCString( "NULL" );
+
+		allocString = CLString:alloc( );    // needs release
+		allocString:initWithCString( "alloc" );
+    
+        settingString = CLString:alloc( );
+        settingString:initWithCString( "_setting" );
+
+		ifdefString = CLString:alloc( );  // needs release
+		endifString = CLString:alloc( );  // needs release
+		classString = CLString:alloc( );  // needs release
+
+		ifdefString:initWithCString( "#if" );
+		endifString:initWithCString( "#endif" );
+		classString:initWithCString( ".clc" );
+
+    }
+
+
+    void destruct( )
+    {
+
+        clcString:release( );
+        forString:release( );
+        selfString:release( );
+        nullString:release( );
+        allocString:release( );
+		
+		ifdefString:release( );
+		endifString:release( );
+		classString:release( );
+
+        settingString:release( );
+    
+    }
+
+
+}

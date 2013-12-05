@@ -1,0 +1,74 @@
+#include "CLObject.clc"
+#include "CLObjectList.clc"
+
+
+FileElements:CLObject
+{
+
+	CLObjectList* classesList;
+	CLObjectList* settingsList;
+	CLObjectList* settingNamesList;
+	CLObjectList* functionsList;
+	CLObjectList* functionHeadersList;
+	CLObjectList* structuresList;
+	CLObjectList* structureHeadersList;
+	
+	
+	void init( )
+	{
+    
+        CLObject:init( self );
+	
+		classesList				= CLObjectList:alloc( );
+		settingsList			= CLObjectList:alloc( );
+		settingNamesList		= CLObjectList:alloc( );
+		functionsList			= CLObjectList:alloc( );
+		functionHeadersList		= CLObjectList:alloc( );
+		structuresList			= CLObjectList:alloc( );
+		structureHeadersList	= CLObjectList:alloc( );
+		
+		classesList:init( );
+		settingsList:init( );
+		settingNamesList:init( );
+		functionsList:init( );
+		functionHeadersList:init( );
+		structuresList:init( );
+		structureHeadersList:init( );
+	
+	}
+	
+	
+	void destruct( )
+	{
+	
+		classesList:release( );
+		settingsList:release( );
+		settingNamesList:release( );
+		functionsList:release( );
+		functionHeadersList:release( );
+		structuresList:release( );
+		structureHeadersList:release( );	
+
+        CLObject:destruct( self );
+	
+	}
+	
+	
+	void describe( )
+	{
+	
+		printf( "\nCLASSES : " ); classesList.describe( );
+
+		printf( "\nSETTING NAMES : " ); settingNamesList.describe( );
+
+		printf( "\nSTRUCTURE HEADERS : " ); structureHeadersList.describe( );
+
+		printf( "\nFUNCTION HEADERS : " ); functionHeadersList.describe( );
+
+		printf( "\nSTRUCTRUES : " ); structuresList.describe( );
+
+		printf( "\nFUNCTIONS : " ); functionsList.describe( );
+			
+	}
+
+}
