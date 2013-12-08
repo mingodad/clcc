@@ -14,18 +14,20 @@ FileElements:CLObject
 	CLObjectList* structureHeadersList;
 	
 	
+	// constructpr
+	
 	void init( )
 	{
     
         CLObject:init( self );
 	
-		classesList				= CLObjectList:alloc( );
-		settingsList			= CLObjectList:alloc( );
-		settingNamesList		= CLObjectList:alloc( );
-		functionsList			= CLObjectList:alloc( );
-		functionHeadersList		= CLObjectList:alloc( );
-		structuresList			= CLObjectList:alloc( );
-		structureHeadersList	= CLObjectList:alloc( );
+		classesList:alloc( );
+		settingsList:alloc( );
+		settingNamesList:alloc( );
+		functionsList:alloc( );
+		functionHeadersList:alloc( );
+		structuresList:alloc( );
+		structureHeadersList:alloc( );
 		
 		classesList:init( );
 		settingsList:init( );
@@ -37,6 +39,8 @@ FileElements:CLObject
 	
 	}
 	
+	
+	// destructor
 	
 	void destruct( )
 	{
@@ -53,6 +57,8 @@ FileElements:CLObject
 	
 	}
 	
+	
+	// descriptor
 	
 	void describe( )
 	{

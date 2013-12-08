@@ -46,6 +46,7 @@
 		33160128184E03B4003CD999 /* Creator.clc */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = Creator.clc; path = ../../../Sources/Creator.clc; sourceTree = "<group>"; };
 		33160129184E03B4003CD999 /* Main.clc */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = Main.clc; path = ../../../Sources/Main.clc; sourceTree = "<group>"; };
 		3316012A184E03B4003CD999 /* Tokenizer.clc */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = Tokenizer.clc; path = ../../../Sources/Tokenizer.clc; sourceTree = "<group>"; };
+		3347CE68185518C400A5BD53 /* clcc_0.7.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = clcc_0.7.c; path = ../../../Related/clcc_0.7.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -80,6 +81,7 @@
 			children = (
 				33160116184E03B4003CD999 /* CoreLib */,
 				3316011D184E03B4003CD999 /* DataClass */,
+				3347CE67185517C500A5BD53 /* Flat */,
 				33160125184E03B4003CD999 /* clcsrc.h */,
 				33160124184E03B4003CD999 /* clcsrc.c */,
 				33160126184E03B4003CD999 /* main.c */,
@@ -117,6 +119,14 @@
 			);
 			name = DataClass;
 			path = ../../../Sources/DataClass;
+			sourceTree = "<group>";
+		};
+		3347CE67185517C500A5BD53 /* Flat */ = {
+			isa = PBXGroup;
+			children = (
+				3347CE68185518C400A5BD53 /* clcc_0.7.c */,
+			);
+			name = Flat;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -169,7 +179,7 @@
 /* Begin PBXShellScriptBuildPhase section */
 		3316012D184E03C6003CD999 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
+			buildActionMask = 12;
 			files = (
 			);
 			inputPaths = (
@@ -178,7 +188,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "/Users/milgra/Desktop/Cloud/Work/Compiler/Related/clcc_0.7 Main -p /Users/milgra/Desktop/Cloud/Work/Compiler/Sources/ -p /Users/milgra/Desktop/Cloud/Work/Compiler/Sources/CoreLib/ -p /Users/milgra/Desktop/Cloud/Work/Compiler/Sources/DataClass/ -o /Users/milgra/Desktop/Cloud/Work/Compiler/Sources/";
+			shellScript = "/Users/milgra/bin/clcc_0.7b Main.clc -p /Users/milgra/Desktop/Cloud/Work/Compiler/Sources/ -p /Users/milgra/Desktop/Cloud/Work/Compiler/Sources/CoreLib/ -p /Users/milgra/Desktop/Cloud/Work/Compiler/Sources/DataClass/ -o /Users/milgra/Desktop/Cloud/Work/Compiler/Sources/";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -266,6 +276,9 @@
 		33160114184E0357003CD999 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				GCC_C_LANGUAGE_STANDARD = c89;
+				GCC_WARN_PEDANTIC = YES;
+				OTHER_CFLAGS = "";
 				PRODUCT_NAME = clcc_0.7;
 			};
 			name = Debug;
@@ -273,6 +286,9 @@
 		33160115184E0357003CD999 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				GCC_C_LANGUAGE_STANDARD = c89;
+				GCC_WARN_PEDANTIC = YES;
+				OTHER_CFLAGS = "";
 				PRODUCT_NAME = clcc_0.7;
 			};
 			name = Release;

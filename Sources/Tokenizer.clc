@@ -32,22 +32,29 @@ Tokenizer:CLObject
 	{
 
 		// printf( "\nTokenizer createLines" );
-
-		Line*  actualLine;
+		
+		char inChar;
+		char inChars;
+        char inClass;
+		char inEscape;
+		struct CLChar* actualChar;
+		Line* actualLine;
 		Line** actualLinePointer;
+		
+		// init
 	
-		actualLine = Line:alloc( );			// needs release
+		actualLine:alloc( );			// needs release
 		actualLine:init( );
 		actualLine.type = kLineTypeGeneral;
 		
 		actualLinePointer = &actualLine;
 		
-		char inChar   = 0;
-		char inChars  = 0;
-        char inClass  = 0;
-		char inEscape = 0;
+		inChar = 0;
+		inChars = 0;
+		inClass = 0;
+		inEscape = 0;
 				
-		struct CLChar* actualChar = theString.head;
+		actualChar = theString.head;
 		
 		while ( actualChar != NULL )
 		{
@@ -190,7 +197,11 @@ Tokenizer:CLObject
 
 		// printf( "\nTokenizer resetActualLine" );
 		
-		Line* actualLine = *theLinePointer;
+		Line* actualLine;
+		
+		// init
+		
+		actualLine = *theLinePointer;
 		
 		if ( actualLine.text.length > 0 )
 		{
@@ -217,20 +228,26 @@ Tokenizer:CLObject
 
 		// printf( "\nTokenizer createTokens" );
 		
-		Token*  actualToken;
+		char inChar;
+		char inChars;
+		char inEscape;
+		struct CLChar* actualChar;
+		Token* actualToken;
 		Token** actualTokenPointer;
+		
+		// init
 
-		actualToken = Token:alloc( );
+		actualToken:alloc( );
 		actualToken:init( );
 		actualToken.mainType = kTokenMainTypeWord;
 		
 		actualTokenPointer = &actualToken;
 			
-		char inChar   = 0;
-		char inChars  = 0;
-		char inEscape = 0;
-
-		struct CLChar* actualChar = theString.head;
+		inChar = 0;
+		inChars = 0;
+		inEscape = 0;
+		
+		actualChar = theString.head;
 
 		while ( actualChar != NULL )
 		{
@@ -377,7 +394,11 @@ Tokenizer:CLObject
 
 		// printf( "\nTokenizer resetActualToken" );
 		
-		Token* actualToken = *theTokenPointer;
+		Token* actualToken;
+		
+		// init
+		
+		actualToken = *theTokenPointer;
 		
 		if ( actualToken.text.length > 0 )
 		{

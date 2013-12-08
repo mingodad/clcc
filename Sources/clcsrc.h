@@ -22,13 +22,14 @@
 #define kTokenSubTypeLocalCall			12
 #define kTokenSubTypeImplicitCall		13
 #define kTokenSubTypeExplicitCall		14
-#define kTokenSubTypeExplicitClassCall	15
-#define kTokenSubTypeExplicitCallClass	16
-#define kTokenSubTypeExplicitAccessor	17
-#define kTokenSubTypeImplicitAccessor	18
-#define kTokenSubTypeForEachCycle		19
-#define kTokenSubTypeLocalCallReference 20
-#define kTokenSubTypeStructAccessor		21
+#define kTokenSubTypeExplicitAllocCall	15
+#define kTokenSubTypeExplicitClassCall	16
+#define kTokenSubTypeExplicitCallClass	17
+#define kTokenSubTypeExplicitAccessor	18
+#define kTokenSubTypeImplicitAccessor	19
+#define kTokenSubTypeForEachCycle		20
+#define kTokenSubTypeLocalCallReference 21
+#define kTokenSubTypeStructAccessor		22
 #define kLineTypeGeneral	0
 #define kLineTypeClassDef	1
 #define kLineTypeBlockStart	2
@@ -58,8 +59,6 @@ struct CLObjectList;
 struct CLObjectList_Class;
 struct CLStringObjectList;
 struct CLStringObjectList_Class;
-struct Token;
-struct Token_Class;
 struct Creator;
 struct Creator_Class;
 struct Analyzer;
@@ -72,6 +71,8 @@ struct FileElements;
 struct FileElements_Class;
 struct ClassElements;
 struct ClassElements_Class;
+struct Token;
+struct Token_Class;
 struct Line;
 struct Line_Class;
 struct Scope;
@@ -83,9 +84,9 @@ struct Main
 	struct Creator * creator ; 
 	struct Analyzer * analyzer ; 
 	struct Tokenizer * tokenizer ; 
-	struct FileElements * collector ; 
-	struct Constants * constants ; 
 	struct CLString * targetPath ; 
+	struct Constants * constants ; 
+	struct FileElements * collector ; 
 	struct CLObjectList * pathsList ; 
 	struct CLObject_Class* _class_CLObject;
 	void** _components_CLObject;
@@ -97,7 +98,7 @@ struct Main_Class
 	char* className;
 	void* classId;
 	int 	(*init) (struct Main*, int  , const char *  [ ] ) ;
-	void 	(*analyzeParameters) (struct Main*, char * *  , int  ) ;
+	void 	(*analyzeParameters) (struct Main*, int  , char * *  ) ;
 	void 	(*compileClass) (struct Main*, struct CLString *  , struct FileElements *  ) ;
 	void 	(*createAndOrganizeLines) (struct Main*, struct CLString *  , struct ClassElements *  , struct CLObjectList *  , struct CLObjectList *  ) ;
 	void 	(*getLinesForClass) (struct Main*, struct CLString *  , struct CLObjectList *  ) ;
@@ -161,8 +162,9 @@ struct CLString_Class
 	struct CLString * 	(*stringWithLastPathComponent) (struct CLString* ) ;
 	struct CLString * 	(*stringByRemovingExtension) (struct CLString* ) ;
 	struct CLString * 	(*stringByRemovingLastPathComponent) (struct CLString* ) ;
-	long long 	(*indexOfString) (struct CLString*, struct CLString *  ) ;
-	int 	(*equals) (struct CLString*, struct CLString *  ) ;
+	char 	(*containsString) (struct CLString*, struct CLString *  ) ;
+	unsigned long 	(*indexOfString) (struct CLString*, struct CLString *  ) ;
+	char 	(*equals) (struct CLString*, struct CLString *  ) ;
 	char * 	(*cString) (struct CLString* ) ;
 	void 	(*describe) (struct CLString* ) ;
 	char* className_CLObject;
@@ -193,12 +195,14 @@ struct CLObjectList_Class
 	void 	(*init) (struct CLObjectList* ) ;
 	void 	(*destruct) (struct CLObjectList* ) ;
 	void 	(*addObject) (struct CLObjectList*, struct CLObject *  ) ;
+	void 	(*addObjectAtIndex) (struct CLObjectList*, struct CLObject *  , unsigned long  ) ;
 	void 	(*addObjectsInObjectList) (struct CLObjectList*, struct CLObjectList *  ) ;
 	void 	(*removeObject) (struct CLObjectList*, struct CLObject *  ) ;
 	struct CLObject * 	(*removeObjectAtIndex) (struct CLObjectList*, unsigned long  ) ;
 	void 	(*removeAllObjects) (struct CLObjectList* ) ;
 	struct CLObject * 	(*objectAtIndex) (struct CLObjectList*, unsigned long  ) ;
-	long long 	(*indexOfObject) (struct CLObjectList*, struct CLObject *  ) ;
+	char 	(*containsObject) (struct CLObjectList*, struct CLObject *  ) ;
+	unsigned long 	(*indexOfObject) (struct CLObjectList*, struct CLObject *  ) ;
 	struct CLObject * 	(*firstObject) (struct CLObjectList* ) ;
 	struct CLObject * 	(*lastObject) (struct CLObjectList* ) ;
 	void 	(*describe) (struct CLObjectList* ) ;
@@ -224,9 +228,10 @@ struct CLStringObjectList_Class
 {
 	char* className;
 	void* classId;
-	long long 	(*indexOfString) (struct CLStringObjectList*, struct CLString *  , struct CLObjectList *  ) ;
-	void 	(*removeStrings) (struct CLStringObjectList*, struct CLObjectList *  , struct CLObjectList *  ) ;
+	char 	(*containsString) (struct CLStringObjectList*, struct CLString *  , struct CLObjectList *  ) ;
+	unsigned long 	(*indexOfString) (struct CLStringObjectList*, struct CLString *  , struct CLObjectList *  ) ;
 	void 	(*removeString) (struct CLStringObjectList*, struct CLString *  , struct CLObjectList *  ) ;
+	void 	(*removeStrings) (struct CLStringObjectList*, struct CLObjectList *  , struct CLObjectList *  ) ;
 	void 	(*addStringAsUnique) (struct CLStringObjectList*, struct CLString *  , struct CLObjectList *  ) ;
 	void 	(*addStringsAsUnique) (struct CLStringObjectList*, struct CLObjectList *  , struct CLObjectList *  ) ;
 	struct CLObjectList * 	(*splitStringByCharacter) (struct CLStringObjectList*, struct CLString *  , char  ) ;
@@ -237,46 +242,6 @@ struct CLStringObjectList_Class
 	void 	(*retain) (struct CLStringObjectList* ) ;
 	void 	(*release) (struct CLStringObjectList* ) ;
 	void 	(*describe) (struct CLStringObjectList* ) ;
-	
-};
-struct Token
-{
-	struct Token_Class* _class;
-	void** _components;
-	struct CLString * text ; 
-	struct CLString * linkId ; 
-	struct CLString * classId ; 
-	struct CLString * variableId ; 
-	struct CLString * containerId ; 
-	struct CLString * instanceList ; 
-	char subType ; 
-	char mainType ; 
-	char isMember ; 
-	struct CLObject_Class* _class_CLObject;
-	void** _components_CLObject;
-	unsigned long retainCount ; 
-	
-};
-struct Token_Class
-{
-	char* className;
-	void* classId;
-	void 	(*init) (struct Token* ) ;
-	void 	(*destruct) (struct Token* ) ;
-	void 	(*setText) (struct Token*, struct CLString *  ) ;
-	void 	(*setLinkId) (struct Token*, struct CLString *  ) ;
-	void 	(*setClassId) (struct Token*, struct CLString *  ) ;
-	void 	(*setVariableId) (struct Token*, struct CLString *  ) ;
-	void 	(*setContainerId) (struct Token*, struct CLString *  ) ;
-	void 	(*setInstanceList) (struct Token*, struct CLString *  ) ;
-	void 	(*describe) (struct Token* ) ;
-	char* className_CLObject;
-	void* classId_CLObject;
-	void 	(*init_CLObject) (struct Token* ) ;
-	void 	(*destruct_CLObject) (struct Token* ) ;
-	void 	(*retain) (struct Token* ) ;
-	void 	(*release) (struct Token* ) ;
-	void 	(*describe_CLObject) (struct Token* ) ;
 	
 };
 struct Creator
@@ -338,8 +303,9 @@ struct Analyzer_Class
 	void 	(*analyzeMembers) (struct Analyzer*, struct ClassElements *  ) ;
 	void 	(*analyzeMethods) (struct Analyzer*, struct ClassElements *  ) ;
 	void 	(*analyzeMethodDef) (struct Analyzer*, struct CLObjectList *  , struct CLObjectList *  , struct ClassElements *  ) ;
-	void 	(*analyzeLine) (struct Analyzer*, struct CLObjectList *  , struct CLObjectList *  , struct ClassElements *  ) ;
-	void 	(*analyzeForEachToken) (struct Analyzer*, struct CLLink * *  , struct Scope *  , struct CLObjectList *  , struct CLObjectList *  ) ;
+	void 	(*analyzeLine) (struct Analyzer*, struct CLObjectList *  , struct CLObjectList *  , struct CLObjectList *  , struct ClassElements *  ) ;
+	void 	(*analyzeForEachToken) (struct Analyzer*, struct CLLink * *  , struct Scope *  , struct CLObjectList *  , struct CLObjectList *  , struct CLObjectList *  ) ;
+	void 	(*addLinkStructAndVariable) (struct Analyzer*, struct CLString *  , struct CLString *  , struct CLString *  , struct Scope *  , struct CLObjectList *  ) ;
 	void 	(*analyzeAllocToken) (struct Analyzer*, struct Token *  , struct CLObjectList *  ) ;
 	void 	(*analyzeClassToken) (struct Analyzer*, struct CLLink * *  , struct Scope *  , struct ClassElements *  ) ;
 	void 	(*analyzeMethodToken) (struct Analyzer*, struct CLLink * *  ) ;
@@ -390,11 +356,12 @@ struct Constants
 	struct CLString * forString ; 
 	struct CLString * selfString ; 
 	struct CLString * nullString ; 
-	struct CLString * allocString ; 
-	struct CLString * settingString ; 
+	struct CLString * linkString ; 
 	struct CLString * ifdefString ; 
 	struct CLString * endifString ; 
 	struct CLString * classString ; 
+	struct CLString * allocString ; 
+	struct CLString * settingString ; 
 	struct CLObject_Class* _class_CLObject;
 	void** _components_CLObject;
 	unsigned long retainCount ; 
@@ -481,6 +448,46 @@ struct ClassElements_Class
 	void 	(*describe_CLObject) (struct ClassElements* ) ;
 	
 };
+struct Token
+{
+	struct Token_Class* _class;
+	void** _components;
+	struct CLString * text ; 
+	struct CLString * linkId ; 
+	struct CLString * classId ; 
+	struct CLString * variableId ; 
+	struct CLString * containerId ; 
+	struct CLString * instanceList ; 
+	char subType ; 
+	char mainType ; 
+	char isMember ; 
+	struct CLObject_Class* _class_CLObject;
+	void** _components_CLObject;
+	unsigned long retainCount ; 
+	
+};
+struct Token_Class
+{
+	char* className;
+	void* classId;
+	void 	(*init) (struct Token* ) ;
+	void 	(*destruct) (struct Token* ) ;
+	void 	(*setText) (struct Token*, struct CLString *  ) ;
+	void 	(*setLinkId) (struct Token*, struct CLString *  ) ;
+	void 	(*setClassId) (struct Token*, struct CLString *  ) ;
+	void 	(*setVariableId) (struct Token*, struct CLString *  ) ;
+	void 	(*setContainerId) (struct Token*, struct CLString *  ) ;
+	void 	(*setInstanceList) (struct Token*, struct CLString *  ) ;
+	void 	(*describe) (struct Token* ) ;
+	char* className_CLObject;
+	void* classId_CLObject;
+	void 	(*init_CLObject) (struct Token* ) ;
+	void 	(*destruct_CLObject) (struct Token* ) ;
+	void 	(*retain) (struct Token* ) ;
+	void 	(*release) (struct Token* ) ;
+	void 	(*describe_CLObject) (struct Token* ) ;
+	
+};
 struct Line
 {
 	struct Line_Class* _class;
@@ -515,6 +522,7 @@ struct Scope
 	void** _components;
 	char type ; 
 	struct CLString * scopeLink ; 
+	struct CLObjectList * forEachList ; 
 	struct CLObjectList * instancesList ; 
 	struct CLObjectList * instanceNamesList ; 
 	char nextScopeType ; 
@@ -546,7 +554,7 @@ void  free_object( void* theObject );
 void Main_CreateClass( );
 struct Main* Main_alloc( );
 int Main_init (struct Main* self, int theCount , const char * theTokens [ ] ) ;
-void Main_analyzeParameters (struct Main* self, char * * theTokens , int theCount ) ;
+void Main_analyzeParameters (struct Main* self, int theCount , char * * theTokens ) ;
 void Main_compileClass (struct Main* self, struct CLString * theClassName , struct FileElements * theFileElements ) ;
 void Main_createAndOrganizeLines (struct Main* self, struct CLString * theClassName , struct ClassElements * theElements , struct CLObjectList * theParentNamesList , struct CLObjectList * theParentElementsList ) ;
 void Main_getLinesForClass (struct Main* self, struct CLString * theClassName , struct CLObjectList * theLines ) ;
@@ -573,15 +581,16 @@ void CLString_appendCharacter (struct CLString* self, char theCharacter ) ;
 void CLString_appendString (struct CLString* self, struct CLString * theString ) ;
 void CLString_appendCString (struct CLString* self, char * theString ) ;
 void CLString_removeAllCharacters (struct CLString* self ) ;
-void CLString_readFile (struct CLString* self, struct CLString * theName ) ;
+void CLString_readFile (struct CLString* self, struct CLString * thePath ) ;
 void CLString_readFilePointer (struct CLString* self, FILE * thePointer ) ;
-void CLString_writeToFile (struct CLString* self, struct CLString * theName ) ;
+void CLString_writeToFile (struct CLString* self, struct CLString * thePath ) ;
 void CLString_writeToFilePointer (struct CLString* self, FILE * theFilePointer ) ;
 struct CLString * CLString_stringWithLastPathComponent (struct CLString* self ) ;
 struct CLString * CLString_stringByRemovingExtension (struct CLString* self ) ;
 struct CLString * CLString_stringByRemovingLastPathComponent (struct CLString* self ) ;
-long long CLString_indexOfString (struct CLString* self, struct CLString * theSearchString ) ;
-int CLString_equals (struct CLString* self, struct CLString * theStringB ) ;
+char CLString_containsString (struct CLString* self, struct CLString * theString ) ;
+unsigned long CLString_indexOfString (struct CLString* self, struct CLString * theSearchString ) ;
+char CLString_equals (struct CLString* self, struct CLString * theStringB ) ;
 char * CLString_cString (struct CLString* self ) ;
 void CLString_describe (struct CLString* self ) ;
 void CLString_retain (struct CLString* self ) ;
@@ -591,12 +600,14 @@ struct CLObjectList* CLObjectList_alloc( );
 void CLObjectList_init (struct CLObjectList* self ) ;
 void CLObjectList_destruct (struct CLObjectList* self ) ;
 void CLObjectList_addObject (struct CLObjectList* self, struct CLObject * theObject ) ;
+void CLObjectList_addObjectAtIndex (struct CLObjectList* self, struct CLObject * theObject , unsigned long theIndex ) ;
 void CLObjectList_addObjectsInObjectList (struct CLObjectList* self, struct CLObjectList * theObjectList ) ;
 void CLObjectList_removeObject (struct CLObjectList* self, struct CLObject * theObject ) ;
 struct CLObject * CLObjectList_removeObjectAtIndex (struct CLObjectList* self, unsigned long theIndex ) ;
 void CLObjectList_removeAllObjects (struct CLObjectList* self ) ;
 struct CLObject * CLObjectList_objectAtIndex (struct CLObjectList* self, unsigned long theIndex ) ;
-long long CLObjectList_indexOfObject (struct CLObjectList* self, struct CLObject * theObject ) ;
+char CLObjectList_containsObject (struct CLObjectList* self, struct CLObject * theObject ) ;
+unsigned long CLObjectList_indexOfObject (struct CLObjectList* self, struct CLObject * theObject ) ;
 struct CLObject * CLObjectList_firstObject (struct CLObjectList* self ) ;
 struct CLObject * CLObjectList_lastObject (struct CLObjectList* self ) ;
 void CLObjectList_describe (struct CLObjectList* self ) ;
@@ -604,9 +615,10 @@ void CLObjectList_retain (struct CLObjectList* self ) ;
 void CLObjectList_release (struct CLObjectList* self ) ;
 void CLStringObjectList_CreateClass( );
 struct CLStringObjectList* CLStringObjectList_alloc( );
-long long CLStringObjectList_indexOfString (struct CLStringObjectList* self, struct CLString * theString , struct CLObjectList * theObjectList ) ;
-void CLStringObjectList_removeStrings (struct CLStringObjectList* self, struct CLObjectList * theStringList , struct CLObjectList * theObjectList ) ;
+char CLStringObjectList_containsString (struct CLStringObjectList* self, struct CLString * theString , struct CLObjectList * theObjectList ) ;
+unsigned long CLStringObjectList_indexOfString (struct CLStringObjectList* self, struct CLString * theString , struct CLObjectList * theObjectList ) ;
 void CLStringObjectList_removeString (struct CLStringObjectList* self, struct CLString * theString , struct CLObjectList * theObjectList ) ;
+void CLStringObjectList_removeStrings (struct CLStringObjectList* self, struct CLObjectList * theStringList , struct CLObjectList * theObjectList ) ;
 void CLStringObjectList_addStringAsUnique (struct CLStringObjectList* self, struct CLString * theString , struct CLObjectList * theObjectList ) ;
 void CLStringObjectList_addStringsAsUnique (struct CLStringObjectList* self, struct CLObjectList * theStringList , struct CLObjectList * theObjectList ) ;
 struct CLObjectList * CLStringObjectList_splitStringByCharacter (struct CLStringObjectList* self, struct CLString * theString , char theCharacter ) ;
@@ -615,19 +627,6 @@ void CLStringObjectList_destruct (struct CLStringObjectList* self ) ;
 void CLStringObjectList_retain (struct CLStringObjectList* self ) ;
 void CLStringObjectList_release (struct CLStringObjectList* self ) ;
 void CLStringObjectList_describe (struct CLStringObjectList* self ) ;
-void Token_CreateClass( );
-struct Token* Token_alloc( );
-void Token_init (struct Token* self ) ;
-void Token_destruct (struct Token* self ) ;
-void Token_setText (struct Token* self, struct CLString * theText ) ;
-void Token_setLinkId (struct Token* self, struct CLString * theLinkId ) ;
-void Token_setClassId (struct Token* self, struct CLString * theClassId ) ;
-void Token_setVariableId (struct Token* self, struct CLString * theVariableId ) ;
-void Token_setContainerId (struct Token* self, struct CLString * theContainerId ) ;
-void Token_setInstanceList (struct Token* self, struct CLString * theList ) ;
-void Token_describe (struct Token* self ) ;
-void Token_retain (struct Token* self ) ;
-void Token_release (struct Token* self ) ;
 void Creator_CreateClass( );
 struct Creator* Creator_alloc( );
 const char * Creator_createGeneralStructs (struct Creator* self ) ;
@@ -660,8 +659,9 @@ struct CLString * Analyzer_extractMethodName (struct Analyzer* self, struct CLOb
 void Analyzer_analyzeMembers (struct Analyzer* self, struct ClassElements * theElements ) ;
 void Analyzer_analyzeMethods (struct Analyzer* self, struct ClassElements * theElements ) ;
 void Analyzer_analyzeMethodDef (struct Analyzer* self, struct CLObjectList * theLine , struct CLObjectList * theScopeList , struct ClassElements * theElements ) ;
-void Analyzer_analyzeLine (struct Analyzer* self, struct CLObjectList * theLine , struct CLObjectList * theScopeList , struct ClassElements * theElements ) ;
-void Analyzer_analyzeForEachToken (struct Analyzer* self, struct CLLink * * theLinkAddress , struct Scope * theScope , struct CLObjectList * theMemberNames , struct CLObjectList * theClassNames ) ;
+void Analyzer_analyzeLine (struct Analyzer* self, struct CLObjectList * theLine , struct CLObjectList * theMethodLines , struct CLObjectList * theScopeList , struct ClassElements * theElements ) ;
+void Analyzer_analyzeForEachToken (struct Analyzer* self, struct CLLink * * theLinkAddress , struct Scope * theScope , struct CLObjectList * theMemberNames , struct CLObjectList * theClassNames , struct CLObjectList * theMethodLines ) ;
+void Analyzer_addLinkStructAndVariable (struct Analyzer* self, struct CLString * theName , struct CLString * theClass , struct CLString * theLinkId , struct Scope * theScope , struct CLObjectList * theMethodLines ) ;
 void Analyzer_analyzeAllocToken (struct Analyzer* self, struct Token * theToken , struct CLObjectList * theLine ) ;
 void Analyzer_analyzeClassToken (struct Analyzer* self, struct CLLink * * theLinkAddress , struct Scope * theScope , struct ClassElements * theElements ) ;
 void Analyzer_analyzeMethodToken (struct Analyzer* self, struct CLLink * * theLinkAddress ) ;
@@ -705,6 +705,19 @@ void ClassElements_destruct (struct ClassElements* self ) ;
 void ClassElements_describe (struct ClassElements* self ) ;
 void ClassElements_retain (struct ClassElements* self ) ;
 void ClassElements_release (struct ClassElements* self ) ;
+void Token_CreateClass( );
+struct Token* Token_alloc( );
+void Token_init (struct Token* self ) ;
+void Token_destruct (struct Token* self ) ;
+void Token_setText (struct Token* self, struct CLString * theText ) ;
+void Token_setLinkId (struct Token* self, struct CLString * theLinkId ) ;
+void Token_setClassId (struct Token* self, struct CLString * theClassId ) ;
+void Token_setVariableId (struct Token* self, struct CLString * theVariableId ) ;
+void Token_setContainerId (struct Token* self, struct CLString * theContainerId ) ;
+void Token_setInstanceList (struct Token* self, struct CLString * theList ) ;
+void Token_describe (struct Token* self ) ;
+void Token_retain (struct Token* self ) ;
+void Token_release (struct Token* self ) ;
 void Line_CreateClass( );
 struct Line* Line_alloc( );
 void Line_init (struct Line* self ) ;

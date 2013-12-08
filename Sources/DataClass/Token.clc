@@ -17,13 +17,14 @@
 #define kTokenSubTypeLocalCall			12
 #define kTokenSubTypeImplicitCall		13
 #define kTokenSubTypeExplicitCall		14
-#define kTokenSubTypeExplicitClassCall	15
-#define kTokenSubTypeExplicitCallClass	16
-#define kTokenSubTypeExplicitAccessor	17
-#define kTokenSubTypeImplicitAccessor	18
-#define kTokenSubTypeForEachCycle		19
-#define kTokenSubTypeLocalCallReference 20
-#define kTokenSubTypeStructAccessor		21
+#define kTokenSubTypeExplicitAllocCall	15
+#define kTokenSubTypeExplicitClassCall	16
+#define kTokenSubTypeExplicitCallClass	17
+#define kTokenSubTypeExplicitAccessor	18
+#define kTokenSubTypeImplicitAccessor	19
+#define kTokenSubTypeForEachCycle		20
+#define kTokenSubTypeLocalCallReference 21
+#define kTokenSubTypeStructAccessor		22
 
 
 Token:CLObject
@@ -48,7 +49,6 @@ Token:CLObject
 
 		CLObject:init( self );
 		
-		text			= CLString:alloc( );;
         linkId			= NULL;
 		classId			= NULL;
         variableId		= NULL;
@@ -59,6 +59,7 @@ Token:CLObject
 		subType			= kTokenSubTypeUndefined;
 		isMember		= 0;
 		
+		text:alloc( );
 		text:init( );
 		
 	}
@@ -89,7 +90,7 @@ Token:CLObject
 	void setText( CLString* theText )
 	{
 	
-		if ( text != NULL ) text:release( );
+		if ( text != NULL ) text.release( );
 		text = theText;
 		if ( text != NULL ) text.retain( );
 	
@@ -101,7 +102,7 @@ Token:CLObject
 	void setLinkId( CLString* theLinkId )
 	{
 	
-		if ( linkId != NULL ) linkId:release( );
+		if ( linkId != NULL ) linkId.release( );
 		linkId = theLinkId;
 		if ( linkId != NULL ) linkId.retain( );
 	
@@ -113,7 +114,7 @@ Token:CLObject
 	void setClassId( CLString* theClassId )
 	{
 	
-		if ( classId != NULL ) classId:release( );
+		if ( classId != NULL ) classId.release( );
 		classId = theClassId;
 		if ( classId != NULL ) classId.retain( );
 	
@@ -125,7 +126,7 @@ Token:CLObject
 	void setVariableId( CLString* theVariableId )
 	{
 	
-		if ( variableId != NULL ) variableId:release( );
+		if ( variableId != NULL ) variableId.release( );
 		variableId = theVariableId;
 		if ( variableId != NULL ) variableId.retain( );
 	
@@ -137,7 +138,7 @@ Token:CLObject
 	void setContainerId( CLString* theContainerId )
 	{
 	
-		if ( containerId != NULL ) containerId:release( );
+		if ( containerId != NULL ) containerId.release( );
 		containerId = theContainerId;
 		if ( containerId != NULL ) containerId.retain( );
 	
@@ -149,7 +150,7 @@ Token:CLObject
 	void setInstanceList( CLString* theList )
 	{
 	
-		if ( instanceList != NULL ) instanceList:release( );
+		if ( instanceList != NULL ) instanceList.release( );
 		instanceList = theList;
 		if ( instanceList != NULL ) instanceList.retain( );
 	
@@ -169,7 +170,9 @@ Token:CLObject
 		printf( "%i" , subType );
 		if ( isMember == 1 ) printf( "M" );
 		if ( classId != NULL ) classId.describe( );
+		if ( variableId != NULL ) variableId.describe( );
 		if ( linkId != NULL ) linkId.describe( );
+		if ( containerId != NULL ) containerId.describe( );
 		printf( "|" );
 	
 	}

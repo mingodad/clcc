@@ -11,12 +11,12 @@ Constants:CLObject
     CLString*   forString;
     CLString*   selfString;
     CLString*   nullString;
-    CLString*   allocString;
-    CLString*   settingString;
-
+    CLString*   linkString;
 	CLString*	ifdefString;
 	CLString*	endifString;
 	CLString* 	classString;
+    CLString*   allocString;
+    CLString*   settingString;
 
 
     void init( )
@@ -26,31 +26,35 @@ Constants:CLObject
         
         linkId = 0;
         
-		clcString = CLString:alloc( );      // needs release
+		clcString:alloc( );			// needs release
 		clcString:initWithCString( "clc" );
 
-		forString = CLString:alloc( );      // needs release
+		forString:alloc( );			// needs release
 		forString:initWithCString( "for" );
 
-		selfString = CLString:alloc( );      // needs release
+		selfString:alloc( );		// needs release
 		selfString:initWithCString( "self" );
 
-		nullString = CLString:alloc( );      // needs release
+		nullString:alloc( );		// needs release
 		nullString:initWithCString( "NULL" );
 
-		allocString = CLString:alloc( );    // needs release
+		linkString:alloc( );		// needs release
+		linkString:initWithCString( "struct CLLink*" );
+
+		ifdefString:alloc( );		// needs release
+		ifdefString:initWithCString( "#if" );
+
+		endifString:alloc( );		// needs release
+		endifString:initWithCString( "#endif" );
+
+		classString:alloc( );		// needs release
+		classString:initWithCString( ".clc" );
+
+		allocString:alloc( );		// needs release
 		allocString:initWithCString( "alloc" );
     
-        settingString = CLString:alloc( );
+        settingString:alloc( );		// needs release
         settingString:initWithCString( "_setting" );
-
-		ifdefString = CLString:alloc( );  // needs release
-		endifString = CLString:alloc( );  // needs release
-		classString = CLString:alloc( );  // needs release
-
-		ifdefString:initWithCString( "#if" );
-		endifString:initWithCString( "#endif" );
-		classString:initWithCString( ".clc" );
 
     }
 
@@ -62,12 +66,11 @@ Constants:CLObject
         forString:release( );
         selfString:release( );
         nullString:release( );
-        allocString:release( );
-		
+		linkString:release( );
 		ifdefString:release( );
 		endifString:release( );
 		classString:release( );
-
+        allocString:release( );
         settingString:release( );
     
     }

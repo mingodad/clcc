@@ -14,7 +14,8 @@ Creator:CLObject
 	const char* createGeneralStructs( )
 	{
 	
-		const char* structs =
+		const char* structs;
+		structs =
 			"struct Class\n"
 			"{\n"
 				"\tchar*	className;\n"
@@ -36,10 +37,12 @@ Creator:CLObject
 	const char* createCasterMethod( )
 	{
 
-		const char* method = 
+		const char* method;
+		method =
 		"void* cast_object( void* theId , void* theObject )\n"
 		"{\n"
-			"\tvoid**components=(((struct Instance*)theObject)->_components);\n"
+			"\tvoid**components;\n"
+			"\tcomponents=(((struct Instance*)theObject)->_components);\n"
 			"\twhile(*components!=NULL)\n"
 			"\t{\n"
 				"\t\tif (((struct Instance*)*components)->_class->classId==theId) return((void*)*components);\n"
@@ -62,17 +65,22 @@ Creator:CLObject
 	const char* createDeallocatorMethod( )
 	{
 
-		const char* method =
+		const char* method;
+		method =
 		"void free_object( void* theObject )\n"
 		"{\n"
-			"\tstruct Instance* instance = theObject;\n"
-			"\tvoid*  original   = instance->_components[ 0 ];\n"
-			"\tvoid** pointer	  = &original;\n"
-			"\tvoid** components = instance->_components;\n"
+			"\tstruct Instance* instance;\n"
+			"\tvoid*  original;\n"
+			"\tvoid** pointer;\n"
+			"\tvoid** components;\n"
+			"\tinstance   = theObject;\n"
+			"\toriginal   = instance->_components[ 0 ];\n"
+			"\tpointer    = &original;\n"
+			"\tcomponents = instance->_components;\n"
 			"\tfree( original );\n"
 			"\tfree( components );\n"
 			"\t*pointer = NULL;\n"
-		"};\n";
+		"}\n";
 		
 		return method;
 
@@ -116,10 +124,23 @@ Creator:CLObject
 								CLObjectList*	theStructureHeadersTargetList )
 	{
 
-		CLString* result	= CLString:alloc( );	// needs release
-		CLString* forward	= CLString:alloc( );	// needs release
+		struct CLLink* tokenLink;
+		struct CLLink* membersLink;
+		struct CLLink* classesLink;
+		struct CLLink* elementsLink;
+		Token* oneToken;
+		CLString* result;
+		CLString* forward;
+		CLString* className;
+		CLObjectList* memberLine;
+		CLObjectList* membersList;
+		ClassElements* classElements;
 		
+		// init
+
+		result:alloc( );	// needs release
 		result:init( );
+		forward:alloc( );	// needs release
 		forward:init( );
 		
 		// struct CLObject
@@ -134,16 +155,16 @@ Creator:CLObject
 
 		result:appendCString( "\n{\n\t" );
 
-		struct CLLink* classesLink  = theClassNamesList.head;
-		struct CLLink* elementsLink = theClassElementsList.head;
+		classesLink = theClassNamesList.head;
+		elementsLink = theClassElementsList.head;
 
 		while ( classesLink != NULL )
 		{
 		
 			// iterate through compositing classes
-		
-			CLString* 		className	  = ( CLString* ) classesLink->data;
-			ClassElements*	classElements = ( ClassElements* ) elementsLink->data;
+
+			className = ( CLString* ) classesLink->data;
+			classElements = ( ClassElements* ) elementsLink->data;
 
 			// struct CLObject_Class* _class_OtherClass;
 
@@ -177,20 +198,19 @@ Creator:CLObject
 
 			// add class members
 			
-			CLObjectList*  membersList = ( CLObjectList* ) classElements.memberTokensList;
-			struct CLLink*	membersLink  = membersList.head;
-			
+			membersList = ( CLObjectList* ) classElements.memberTokensList;
+			membersLink = membersList.head;
+
 			while ( membersLink != NULL )
 			{
-			
-				CLObjectList* memberLine = ( CLObjectList* ) membersLink->data;
-				
-				struct CLLink* tokenLink = memberLine.head;
+
+				memberLine = ( CLObjectList* ) membersLink->data;
+				tokenLink  = memberLine.head;
 				
 				while ( tokenLink != NULL )
 				{
 				
-					Token* oneToken = ( Token* ) tokenLink->data;
+					oneToken = ( Token* ) tokenLink->data;
 
 					if ( oneToken.subType == kTokenSubTypeClass ) result:appendCString( "struct " );
 
@@ -233,13 +253,36 @@ Creator:CLObject
 							CLObjectList*	theStructuresTargetList ,
 							CLObjectList*	theStructureHeadersTargetList )
 	{
+		char isOriginal;
+		char isDuplicate;
+		char firstParenthese;
+		unsigned long originalIndex;
+		unsigned long duplicateIndex;
+		struct CLLink* tokenLink;
+		struct CLLink* classesLink;
+		struct CLLink* elementsLink;
+		struct CLLink* methodsLink;
+		struct CLLink* methodNamesLink;
+		Token* token;
+		CLString* result;
+		CLString* forward;
+		CLString* className;
+		CLString* methodName;
+		CLObject* firstObject;
+		CLObjectList* oneMethod;
+		CLObjectList* firstLine;
+		CLObjectList* duplicates;
+		CLObjectList* methodsList;
+		CLObjectList* methodNamesList;
+		ClassElements* classElements;
+		
+		// init
 
-		CLString*		result		= CLString:alloc( );		// needs release
-		CLString*		forward		= CLString:alloc( );		// needs release
-		CLObjectList*	duplicates	= CLObjectList:alloc( );	// needs release
-
+		result:alloc( );		// needs release
 		result:init( );
+		forward:alloc( );		// needs release
 		forward:init( );
+		duplicates:alloc( );	// needs release
 		duplicates:init( );
 
 		// struct CLObject_Class
@@ -255,14 +298,14 @@ Creator:CLObject
 
 		result:appendCString( "\n{\n\t" );
 
-		struct CLLink* classesLink  = theClassNamesList.head;
-		struct CLLink* elementsLink = theClassElementsList.head;
+		classesLink = theClassNamesList.head;
+		elementsLink = theClassElementsList.head;
 
 		while ( classesLink != NULL )
 		{
 		
-			CLString* 		className	  = ( CLString* ) classesLink->data;
-			ClassElements*	classElements = ( ClassElements* ) elementsLink->data;
+			className	  = ( CLString* ) classesLink->data;
+			classElements = ( ClassElements* ) elementsLink->data;
 			
 			// char* className_OtherClass;
 			
@@ -293,50 +336,57 @@ Creator:CLObject
 			}
 
 			result:appendCString( ";\n\t" );
-			
-			// add methods
 
-			CLObjectList*  methodsList	 = ( CLObjectList* ) classElements.methodTokensList;
-			CLObjectList*  methodNamesList = ( CLObjectList* ) classElements.methodNamesList;
-		
-			struct CLLink*	methodsLink		 = methodsList.head;
-			struct CLLink*	methodNamesLink  = methodNamesList.head;
+			// add methods
+			
+			methodsList	 = ( CLObjectList* ) classElements.methodTokensList;
+			methodNamesList = ( CLObjectList* ) classElements.methodNamesList;
+
+			methodsLink = methodsList.head;
+			methodNamesLink = methodNamesList.head;
 
 			while ( methodsLink != NULL )
 			{
 
-				CLString*	   methodName = ( CLString* ) methodNamesLink->data;
-				CLObjectList* method 	  = ( CLObjectList* ) methodsLink->data;
+				methodName = ( CLString* ) methodNamesLink->data;
+				oneMethod = ( CLObjectList* ) methodsLink->data;
 								
 				// check method duplication
 				
-				long long duplicateIndex = CLStringObjectList:indexOfString( NULL , methodName , duplicates );
-				
-				if ( duplicateIndex > -1 )
+				isDuplicate = CLStringObjectList:containsString( NULL , methodName , duplicates );
+				if ( isDuplicate == 1 )
 				{
 
 					// get original method
-
-					long long originalIndex = CLStringObjectList:indexOfString( NULL , methodName , theCombinedMethodNamesList );
-                    CLObject* methodObject = theCombinedMethodsList.objectAtIndex( originalIndex );
-					method = ( CLObjectList* ) methodObject;
+					
+					duplicateIndex = CLStringObjectList:indexOfString( NULL , methodName , duplicates );
+					isOriginal = CLStringObjectList:containsString( NULL , methodName , theCombinedMethodNamesList );
+					
+					if ( isOriginal == 1 )
+					{
+						CLObject* methodObject;
+						
+						originalIndex = CLStringObjectList:indexOfString( NULL , methodName , theCombinedMethodNamesList );
+						methodObject = theCombinedMethodsList.objectAtIndex( originalIndex );
+						oneMethod = ( CLObjectList* ) methodObject;
+					}
 					
 				}
 
 				// for checking first occurence of parenthese
 
-				char firstParenthese = 0;
+				firstParenthese = 0;
 
 				// get header of function
 
-                CLObject*      firstObject = method.objectAtIndex( 0 );
-				CLObjectList* firstLine = ( CLObjectList* ) firstObject;
-				struct CLLink* tokenLink = firstLine.head;
+				firstObject = oneMethod.objectAtIndex( 0 );
+				firstLine   = ( CLObjectList* ) firstObject;
+				tokenLink   = firstLine.head;
 				
 				while ( tokenLink != NULL )
 				{
 
-					Token* token = ( Token* ) tokenLink->data;
+					token = ( Token* ) tokenLink->data;
 					
 					if ( token.mainType == kTokenMainTypeSymbol )
 					{
@@ -377,7 +427,7 @@ Creator:CLObject
 							result:appendCString( "\t(*" );
 							result:appendString( methodName );
 				
-							if ( duplicateIndex > -1 )
+							if ( isDuplicate == 1 )
 							{
 							
 								// create unique method name
@@ -458,6 +508,8 @@ Creator:CLObject
 							CLObjectList*	theFunctionsTargetList ,
 							CLObjectList*	theFunctionHeadersTargetList )
 	{
+
+		CLObjectList* method;
 		
 		createClassInitializer( 
 			theElements.className , 
@@ -476,7 +528,7 @@ Creator:CLObject
 		for ( CLObject* object : theElements.methodTokensList )
 		{
 
-			CLObjectList* method = ( CLObjectList* ) object;
+			method = ( CLObjectList* ) object;
 			
 			createMethodFunction( 
 				theElements.className , 
@@ -498,15 +550,31 @@ Creator:CLObject
 								 CLObjectList*  theFunctionHeadersTargetList )
 	{
 
-		CLObjectList*	duplicates	= CLObjectList:alloc( );	// needs release
-		CLString*		instance	= CLString:alloc( );		// needs release
-		CLString*		result		= CLString:alloc( );		// needs release
-		CLString*		forward		= CLString:alloc( );		// needs release
+		char isDuplicate;
+		struct CLLink* classesLink;
+		struct CLLink* elementsLink;
+		struct CLLink* methodsLink;
+		struct CLLink* methodNamesLink;
+		CLString* result;
+		CLString* forward;
+		CLString* instance;
+		CLString* className;
+		CLString* methodName;
+		CLObjectList* duplicates;
+		CLObjectList* methodsList;
+		CLObjectList* methodNamesList;
+		ClassElements* classElements;
 		
-		duplicates:init( );
-		instance:init( );
+		// init
+
+		result:alloc( );		// needs release
 		result:init( );
+		forward:alloc( );		// needs release
 		forward:init( );
+		instance:alloc( );		// needs release
+		instance:init( );
+		duplicates:alloc( );	// needs release
+		duplicates:init( );
 		
 		instance:appendString( theClassName );
 		instance:appendCString( "_ClassInstance" );
@@ -530,16 +598,16 @@ Creator:CLObject
 		result:appendCString( "=malloc(sizeof(struct " );
 		result:appendString( theClassName );
 		result:appendCString( "_Class));\n\t" );
-		
-		struct CLLink* classesLink  = theClassNamesList.head;
-		struct CLLink* elementsLink = theClassElementsList.head;
+
+		classesLink  = theClassNamesList.head;
+		elementsLink = theClassElementsList.head;
 		
 		while ( classesLink != NULL )
 		{
-		
-			CLString* 		className	  = ( CLString* ) classesLink->data;
-			ClassElements*	classElements = ( ClassElements* ) elementsLink->data;
-			
+
+			className	  = ( CLString* ) classesLink->data;
+			classElements = ( ClassElements* ) elementsLink->data;
+
 			// CLObject_ClassInstance->className_CLObject="CLObject";
 						
 			result:appendString( instance );
@@ -571,27 +639,27 @@ Creator:CLObject
 			result:appendCString( "_ClassInstance;\n\t" );
 			
 			// add class methods
-			
-			CLObjectList*  methodsList	 = ( CLObjectList* ) classElements.methodTokensList;
-			CLObjectList*  methodNamesList = ( CLObjectList* ) classElements.methodNamesList;
-		
-			struct CLLink*	methodsLink		 = methodsList.head;
-			struct CLLink*	methodNamesLink  = methodNamesList.head;
+
+			methodsList		= ( CLObjectList* ) classElements.methodTokensList;
+			methodNamesList = ( CLObjectList* ) classElements.methodNamesList;
+
+			methodsLink		 = methodsList.head;
+			methodNamesLink  = methodNamesList.head;
 			
 			while ( methodNamesLink != NULL )
 			{
 
-				CLString* methodName = ( CLString* ) methodNamesLink->data;
+				methodName = ( CLString* ) methodNamesLink->data;
 
 				// if method is already created before, rename it
 				
-				long long duplicateIndex = CLStringObjectList:indexOfString( NULL , methodName , duplicates );
+				isDuplicate = CLStringObjectList:containsString( NULL , methodName , duplicates );
 				
 				result:appendString( instance );
 				result:appendCString( "->" );
 				result:appendString( methodName );
 				
-				if ( duplicateIndex > -1 )
+				if ( isDuplicate == 1 )
 				{
 
 					result:appendCString( "_" );
@@ -641,13 +709,22 @@ Creator:CLObject
 									CLObjectList*  theFunctionHeadersTargetList )
 	{
 
-		CLString* instance	= CLString:alloc( );	// needs release
-		CLString* forward	= CLString:alloc( );	// needs release
-		CLString* result	= CLString:alloc( );	// needs release
+		int counter;
+		char decimal[3];
+		struct CLLink* namesToken;
+		CLString* result;
+		CLString* forward;
+		CLString* instance;
+		CLString* className;
 		
-		instance:init( );
-		forward:init( );
+		// init
+
+		result:alloc( );	// needs release
 		result:init( );
+		forward:alloc( );	// needs release
+		forward:init( );
+		instance:alloc( );	// needs release
+		instance:init( );
 		
 		instance:appendString( theClassName );
 		instance:appendCString( "_ClassInstance" );
@@ -666,6 +743,12 @@ Creator:CLObject
 		forward:appendCString( ";\n" );
 
 		result:appendCString( "\n{\n\t" );
+		
+		// struct CLObject*result;
+		
+		result:appendCString( "struct " );
+		result:appendString( theClassName );
+		result:appendCString( "* result;\n\t" );
 
 		// if(CLObject_ClassInstance==NULL)CLObject_CreateClass();
 
@@ -675,18 +758,15 @@ Creator:CLObject
 		result:appendString( theClassName );
 		result:appendCString( "_CreateClass( );\n\t" );
 		
-		// struct CLObject*result=malloc(sizeof(struct CLObject));
+		// result=malloc(sizeof(struct CLObject));
 
-		result:appendCString( "struct " );
-		result:appendString( theClassName );
-		result:appendCString( "* result=malloc(sizeof(struct " );
+		result:appendCString( "result=malloc(sizeof(struct " );
 		result:appendString( theClassName );
 		result:appendCString( "));\n\t" );
 
 		// 	result->_components=malloc(sizeof(void*)*2);
 
-		char decimal[3];
-		sprintf( decimal, "%lu", theClassNamesList.length + 1 );		
+		sprintf( decimal, "%lu", theClassNamesList.length + 1 );
 
 		result:appendCString( "result->_components=malloc(sizeof(void*)*" );
 		result:appendCString( decimal );
@@ -700,12 +780,12 @@ Creator:CLObject
 
 		// _compontents and _class for other classes
 
-		struct CLLink* namesToken = (theClassNamesList.head)->next;
+		namesToken = (theClassNamesList.head)->next;
 		
 		while ( namesToken != NULL )
 		{
 
-			CLString* className = ( CLString* ) namesToken->data;
+			className = ( CLString* ) namesToken->data;
 			
 			result:appendCString( "result->_components_" );
 			result:appendString( className );
@@ -725,14 +805,14 @@ Creator:CLObject
 
 		// result->_components[0]=&(result->_class);
 
-		int counter = 0;
+		counter = 0;
 		
 		namesToken = theClassNamesList.head;
 		
 		while ( namesToken != NULL )
 		{
 
-			CLString* className = ( CLString* ) namesToken->data;
+			className = ( CLString* ) namesToken->data;
 			sprintf( decimal, "%i", counter ); ++counter;
 		
 			result:appendCString( "result->_components[" );
@@ -782,19 +862,29 @@ Creator:CLObject
 								CLObjectList*  theFunctionHeadersTargetList )
 	{
 
-		struct CLLink* lineLink = theMethodList.head;
-		long blockDepth			= 1;
+		int	index;
+        void* firstData;
+		long blockDepth;
+		struct CLLink* lineLink;
+		Token* first;
+		CLString* result;
+		CLString* forward;
+		CLObjectList* line;
 		
-		CLString* result		= CLString:alloc( );	// needs release
-		CLString* forward		= CLString:alloc( );	// needs release
+		// init
+
+		blockDepth	= 1;
+		lineLink	= theMethodList.head;
 		
+		result:alloc( );	// needs release
 		result:init( );
+		forward:alloc( );	// needs release
 		forward:init( );
 		
 		while ( lineLink != NULL )
 		{
 
-			CLObjectList* line = ( CLObjectList* ) lineLink->data;
+			line = ( CLObjectList* ) lineLink->data;
 						
 			if ( lineLink == theMethodList.head )
 			{
@@ -815,11 +905,11 @@ Creator:CLObject
 			{
 			
 				// indent
-			
-                void*  firstData = (line.head)->data;
-				Token* first = ( Token* ) firstData;
+				
+				firstData = (line.head)->data;
+				first = ( Token* ) firstData;
 				if ( line.length == 1 && (first.text.head)->character == '}' ) blockDepth -= 1;
-				for ( int index = 0; index < blockDepth ; index++ ) result:appendCString( "\t" );
+				for ( index = 0; index < blockDepth ; index++ ) result:appendCString( "\t" );
 				
 				// create statement
 
@@ -841,8 +931,8 @@ Creator:CLObject
 		theFunctionsTargetList:addObject( ( CLObject* ) result );
 		theFunctionHeadersTargetList:addObject( ( CLObject* ) forward );
 		
-		forward:release( );
 		result:release( );
+		forward:release( );
 
 		// printf( "\nFUNCTION  RESULT\n%s" , result.cString( ) );
 	
@@ -856,29 +946,34 @@ Creator:CLObject
 								CLObjectList*	theLine )
 	{
 	
-		struct CLLink*	tokenLink		= theLine.head;
-		char			firstParenthese	= 0;
-		CLString*		result			= theResult;
+		char firstParenthese;
+		struct CLLink* tokenLink;
+		Token* oneToken;
+		
+		// init
+
+		tokenLink = theLine.head;
+		firstParenthese	= 0;
 
 		while ( tokenLink != NULL )
 		{
 
-			Token* token = ( Token* ) tokenLink->data;
+			oneToken = ( Token* ) tokenLink->data;
 			
-			if ( token.mainType == kTokenMainTypeSymbol )
+			if ( oneToken.mainType == kTokenMainTypeSymbol )
 			{
 
-				result:appendString( token.text );
+				theResult:appendString( oneToken.text );
 				
 				// check argument block start, add self structure type
 			
-				if ( (token.text.head)->character == '(' && firstParenthese == 0 ) 
+				if ( (oneToken.text.head)->character == '(' && firstParenthese == 0 ) 
 				{
 				
 					firstParenthese = 1;
-					result:appendCString( "struct " );
-					result:appendString( theClassName );
-					result:appendCString( "* self" );
+					theResult:appendCString( "struct " );
+					theResult:appendString( theClassName );
+					theResult:appendCString( "* self" );
 					
 					// check argument absence, add comma if necessary
 					
@@ -886,37 +981,37 @@ Creator:CLObject
 					{
 
 						Token* nextToken = ( Token* ) tokenLink->next->data;
-						if ( (nextToken.text.head)->character != ')' ) result:appendCString( "," );
+						if ( (nextToken.text.head)->character != ')' ) theResult:appendCString( "," );
 
 					}
 					
 				}
 			
 			}
-			else if ( token.mainType == kTokenMainTypeWord )
+			else if ( oneToken.mainType == kTokenMainTypeWord )
 			{
 			
-				if ( token.subType == kTokenSubTypeMethod ) 
+				if ( oneToken.subType == kTokenSubTypeMethod ) 
 				{
 				
-					result:appendString( theClassName );
-					result:appendCString( "_" );
+					theResult:appendString( theClassName );
+					theResult:appendCString( "_" );
 
 				}
-				else if ( token.subType == kTokenSubTypeClass )
+				else if ( oneToken.subType == kTokenSubTypeClass )
 				{
 				
-					result:appendCString( "struct " );
+					theResult:appendCString( "struct " );
 					
 				}
 
 				// add other tokens
 			
-				result:appendString( token.text );
+				theResult:appendString( oneToken.text );
 
 			}
 			
-			result:appendCString( " " );
+			theResult:appendCString( " " );
 			
 			tokenLink = tokenLink->next;
 			
@@ -929,149 +1024,167 @@ Creator:CLObject
 
 	// creates function header
 
-	void createFunctionLine(	CLString*		theResult ,
-									CLString*		theClassName ,
-									CLObjectList*	theLine )
+	void createFunctionLine( CLString*		theResult ,
+							 CLString*		theClassName ,
+							 CLObjectList*	theLine )
 	{
 	
-		CLString*		result		  = theResult;
-		struct CLLink*	tokenLink	  = theLine.head;
-        char            inCasting     = 0;
-		Token*			lastToken	  = NULL;
+        char inCasting;
+		struct CLLink* tokenLink;
+		Token* oneToken;
+		Token* lastToken;
+		CLString* result;
 		
+		// init
+
+		result = theResult;
+		tokenLink = theLine.head;
+		inCasting = 0;
+		lastToken = NULL;
+
 		while ( tokenLink != NULL )
 		{
 
-			Token* token = ( Token* ) tokenLink->data;
+			oneToken = ( Token* ) tokenLink->data;
 			
-			if ( token.mainType == kTokenMainTypeWord )
+			if ( oneToken.mainType == kTokenMainTypeWord )
 			{
 				
 				// insert word separator space
 				
-				if ( lastToken != NULL && lastToken.mainType == token.mainType ) result:appendCString( " " );
+				if ( lastToken != NULL && lastToken.mainType == oneToken.mainType ) result:appendCString( " " );
 
-				if ( token.subType == kTokenSubTypeClass )
+				if ( oneToken.subType == kTokenSubTypeClass )
 				{
 
 					// Mass -> struct Mass
 
 					result:appendCString( "struct " );
-					result:appendString( token.text );
+					result:appendString( oneToken.text );
 
 				}
-				else if ( token.subType == kTokenSubTypeCast )
+				else if ( oneToken.subType == kTokenSubTypeCast )
 				{
 
 					// CLObject:init( ( CLObject* ) self ); -> CLObject:init( cast_object( self , &CLObject_ClassInstance ) );
 
 					result:appendCString( "cast_object( &" );
-					result:appendString( token.text );
+					result:appendString( oneToken.text );
 					result:appendCString( "_ClassInstance , " );
 
                     inCasting = 1;
 
 				}
-				else if ( token.subType == kTokenSubTypeVariable )
+				else if ( oneToken.subType == kTokenSubTypeVariable )
 				{
 
 					// massA -> self->massA
 
-                    if ( token.isMember ) result:appendCString( "self->" );
+                    if ( oneToken.isMember ) result:appendCString( "self->" );
 
-					result:appendString( token.text );
+					result:appendString( oneToken.text );
 
 				}
-				else if ( token.subType == kTokenSubTypeInstance )
+				else if ( oneToken.subType == kTokenSubTypeInstance )
 				{
 
 					// massA -> self->massA
 
 					// collecting everything in instance chain
                     
-                    if ( token.isMember ) result:appendCString( "self->" );
+                    if ( oneToken.isMember ) result:appendCString( "self->" );
 
-					result:appendString( token.text );
+					result:appendString( oneToken.text );
 
 				}
-				else if ( token.subType == kTokenSubTypeImplicitCall )
+				else if ( oneToken.subType == kTokenSubTypeImplicitCall )
 				{
 				
 					// massA.retain( ); -> massA->_class->retain( (void*) massA->_components[0]);
 
 					result:appendCString( "_class->" );
-					result:appendString( token.text );
+					result:appendString( oneToken.text );
 					result:appendCString( "( (void*) " );
-					result:appendString( token.instanceList );
+					result:appendString( oneToken.instanceList );
 					result:appendCString( "_components[0]" );
 					
 					if ( parameterFollows( tokenLink ) == 1 ) result:appendCString( "," );
 					
 				}
-				else if ( token.subType == kTokenSubTypeExplicitCall )
+				else if ( oneToken.subType == kTokenSubTypeExplicitCall )
 				{
-				
+
 					// respaceVectorA:initWithPoints( 0 , 0 ); ->  PLVector_initWithPoints(self->respaceVectorA,0,0);
 
-					result:appendString( token.classId );
+					result:appendString( oneToken.classId );
 					result:appendCString( "_" );
-					result:appendString( token.text );
+					result:appendString( oneToken.text );
 					result:appendCString( "(" );
-					result:appendString( token.instanceList );
+					result:appendString( oneToken.instanceList );
 
 					if ( parameterFollows( tokenLink ) == 1 ) result:appendCString( "," );
 
 				}
-				else if ( token.subType == kTokenSubTypeExplicitClassCall )
+				else if ( oneToken.subType == kTokenSubTypeExplicitAllocCall )
+				{
+				
+					// vectorA:alloc( ); ->  vectorA = PLVector_alloc();
+
+					result:appendString( oneToken.instanceList );
+					result:appendCString( "=" );
+					result:appendString( oneToken.classId );
+					result:appendCString( "_" );
+					result:appendString( oneToken.text );
+					result:appendCString( "(" );
+
+				}
+				else if ( oneToken.subType == kTokenSubTypeExplicitClassCall )
 				{
 				
 					// Scene:init( self , theWidth , theHeight ); -> Scene:init( cast_object( &Scene_ClassInstance , self ) , theWidth , theHeight );
 
-					result:appendString( token.text );
+					result:appendString( oneToken.text );
 					result:appendCString( "(( cast_object( &" );
-					result:appendString( token.classId );
+					result:appendString( oneToken.classId );
 					result:appendCString( "_ClassInstance ," );
 
                     inCasting = 1;
 				
 				}
-				else if ( token.subType == kTokenSubTypeLocalCall )
+				else if ( oneToken.subType == kTokenSubTypeLocalCall )
 				{
 				
 					// respace( ); -> PLSpacer_respace( self );
 
 					result:appendString( theClassName );
 					result:appendCString( "_" );
-					result:appendString( token.text );
+					result:appendString( oneToken.text );
 					result:appendCString( "( self" );
 
 					if ( parameterFollows( tokenLink ) == 1 ) result:appendCString( "," );
 
 				}
-				else if ( token.subType == kTokenSubTypeLocalCallReference )
+				else if ( oneToken.subType == kTokenSubTypeLocalCallReference )
 				{
 				
 					// respace( ); -> PLSpacer_respace( self );
 
 					result:appendCString( "self->_class->" );
-					result:appendString( token.text );
+					result:appendString( oneToken.text );
 
 				}
-				else if ( token.subType == kTokenSubTypeForEachCycle )
+				else if ( oneToken.subType == kTokenSubTypeForEachCycle )
 				{
                 
-                    result:appendCString( "struct CLLink* " );
-                    result:appendString( token.linkId );
+                    result:appendString( oneToken.linkId );
                     result:appendCString( "=" );
-                    result:appendString( token.containerId );
+                    result:appendString( oneToken.containerId );
                     result:appendCString( "->head;while( " );
-                    result:appendString( token.linkId );
+                    result:appendString( oneToken.linkId );
                     result:appendCString( "!=NULL){" );
-                    result:appendString( token.classId );
-                    result:appendCString( "* " );
-                    result:appendString( token.variableId );
+                    result:appendString( oneToken.variableId );
                     result:appendCString( "=" );
-                    result:appendString( token.linkId );
+                    result:appendString( oneToken.linkId );
                     result:appendCString( "->data;" );
                 
                 }
@@ -1080,15 +1193,15 @@ Creator:CLObject
 
 					// store pure words for instance call, else just add token
 				
-					result:appendString( token.text );
+					result:appendString( oneToken.text );
 
 				}
 				
 			}
-			else if ( token.mainType == kTokenMainTypeSymbol )
+			else if ( oneToken.mainType == kTokenMainTypeSymbol )
 			{
 			
-				if ( token.subType == kTokenSubTypeImplicitAccessor )
+				if ( oneToken.subType == kTokenSubTypeImplicitAccessor )
 				{
 
 					// explicit accessor can be standalone in case of direct explicit call
@@ -1096,7 +1209,7 @@ Creator:CLObject
 					result:appendCString( "->" );
 
 				}
-				else if ( token.subType == kTokenSubTypeExplicitAccessor )
+				else if ( oneToken.subType == kTokenSubTypeExplicitAccessor )
 				{
 
 					// explicit accessor can be standalone in case of direct explicit call
@@ -1104,12 +1217,12 @@ Creator:CLObject
 					result:appendCString( "_" );
 
 				}
-				else if ( token.subType == kTokenSubTypeStructAccessor )
+				else if ( oneToken.subType == kTokenSubTypeStructAccessor )
 				{
 
 					// explicit accessor can be standalone in case of direct explicit call
 
-					result:appendString( token.text );
+					result:appendString( oneToken.text );
 
 				}
 				else
@@ -1121,36 +1234,36 @@ Creator:CLObject
                     
                     // adding for each scope ending
 
-                    if ( (token.text.head)->character == '}' && token.linkId != NULL )
+                    if ( (oneToken.text.head)->character == '}' && oneToken.linkId != NULL )
                     {
-                        result:appendString( token.linkId );
+                        result:appendString( oneToken.linkId );
                         result:appendCString( "=" );
-                        result:appendString( token.linkId );
+                        result:appendString( oneToken.linkId );
                         result:appendCString( "->next;" );
                     }
 
-                    result:appendString( token.text );
+                    result:appendString( oneToken.text );
 
 				}
 
 			}
-			else if ( token.mainType != kTokenMainTypeUndefined )
+			else if ( oneToken.mainType != kTokenMainTypeUndefined )
             {
 
                 if ( inCasting == 1 ) result:appendCString( "))" ); inCasting = 0;
                 
-                result:appendString( token.text );
+                result:appendString( oneToken.text );
                 
             }
 			else
 			{
 			
 				// if token is invisible, adding a padding space
-				result:appendCString( " " );
+				if ( (result.last)->character != '\t' && (result.last)->character != ' ' ) result:appendCString( " " );
 				
 			}
 
-			lastToken = token;
+			lastToken = oneToken;
 			tokenLink = tokenLink->next;
 			
 		}
@@ -1162,11 +1275,13 @@ Creator:CLObject
 	
 	char parameterFollows( struct CLLink* theLink )
 	{
+
+		Token* nextToken;
 	
 		if ( theLink->next != NULL && theLink->next->next != NULL )
 		{
 
-			Token* nextToken = ( Token* ) theLink->next->next->data;
+			nextToken = ( Token* ) theLink->next->next->data;
 			if ( (nextToken.text.head)->character != ')' ) return 1;
 
 		}
