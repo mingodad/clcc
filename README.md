@@ -11,3 +11,5 @@ The Sources folder usually contains all platform-independent sources, in this ca
 
 main.c is the entering point, it instantiates the Main class in Main.clc. 
 To create a compiler project for your platform/IDE, just include all the files in this folder, set main.c as the main file, and precompile all *.clc files to clcsrc.h and clcsrc.c, that are located in the Sources folder also.
+
+If you are using xCode, set the proper paths in the run script section of the build phases before building.
