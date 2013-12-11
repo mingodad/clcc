@@ -201,8 +201,6 @@ CLString:CLObject
 			character = getc( thePointer );
 
 		}
-
-		fclose( thePointer );
 			
 	}
 
