@@ -395,7 +395,7 @@ Creator:CLObject
 						
 						// check argument block start, add self structure type
 					
-						if ( (token.text.head)->character == '(' && firstParenthese == 0 ) 
+						if ( token.text.startsWith('(') && firstParenthese == 0 ) 
 						{
 						
 							firstParenthese = 1;
@@ -409,7 +409,7 @@ Creator:CLObject
 							{
 
 								Token* nextToken = ( Token* ) tokenLink->next->data;
-								if ( (nextToken.text.head)->character != ')' ) result:appendCString( "," );
+								if ( !nextToken.text.startsWith(')') ) result:appendCString( "," );
 
 							}
 							
@@ -908,7 +908,7 @@ Creator:CLObject
 				
 				firstData = (line.head)->data;
 				first = ( Token* ) firstData;
-				if ( line.length == 1 && (first.text.head)->character == '}' ) blockDepth -= 1;
+				if ( line.length == 1 && first.text.startsWith('}') ) blockDepth -= 1;
 				for ( index = 0; index < blockDepth ; index++ ) result:appendCString( "\t" );
 				
 				// create statement
@@ -918,7 +918,7 @@ Creator:CLObject
 				// indent
 				
 				if ( lineLink != theMethodList.last ) result:appendCString( "\n" );
-				if ( line.length == 1 && (first.text.head)->character == '{' ) blockDepth += 1;
+				if ( line.length == 1 && first.text.startsWith('{') ) blockDepth += 1;
 
 			}
 		
@@ -967,7 +967,7 @@ Creator:CLObject
 				
 				// check argument block start, add self structure type
 			
-				if ( (oneToken.text.head)->character == '(' && firstParenthese == 0 ) 
+				if ( oneToken.text.startsWith('(') && firstParenthese == 0 ) 
 				{
 				
 					firstParenthese = 1;
@@ -981,7 +981,7 @@ Creator:CLObject
 					{
 
 						Token* nextToken = ( Token* ) tokenLink->next->data;
-						if ( (nextToken.text.head)->character != ')' ) theResult:appendCString( "," );
+						if ( !nextToken.text.startsWith(')') ) theResult:appendCString( "," );
 
 					}
 					
@@ -1234,7 +1234,7 @@ Creator:CLObject
                     
                     // adding for each scope ending
 
-                    if ( (oneToken.text.head)->character == '}' && oneToken.linkId != NULL )
+                    if ( oneToken.text.startsWith('}') && oneToken.linkId != NULL )
                     {
                         result:appendString( oneToken.linkId );
                         result:appendCString( "=" );
@@ -1259,7 +1259,7 @@ Creator:CLObject
 			{
 			
 				// if token is invisible, adding a padding space
-				if ( (result.last)->character != '\t' && (result.last)->character != ' ' ) result:appendCString( " " );
+				if ( (!result.endsWith('\t')) && (!result.endsWith(' ')) ) result:appendCString( " " );
 				
 			}
 
@@ -1282,7 +1282,7 @@ Creator:CLObject
 		{
 
 			nextToken = ( Token* ) theLink->next->next->data;
-			if ( (nextToken.text.head)->character != ')' ) return 1;
+			if ( !nextToken.text.startsWith(')') ) return 1;
 
 		}
 		

@@ -1,0 +1,1 @@
+time clcc Main.clc  -p ./ -p CoreLib/ -p DataClass/

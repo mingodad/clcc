@@ -157,7 +157,7 @@ Main:CLObject
 		
 		printf( "\n" );
 		
-		while (1) { }
+		//while (1) { }
 
 		return 0;
 		
@@ -265,8 +265,8 @@ Main:CLObject
         }
 		
 		if ( targetPath.length == 0 ||
-			(targetPath.last)->character == '/' ||
-			(targetPath.last)->character == '\\' )
+			targetPath.endsWith( '/' ) ||
+			targetPath.endsWith( '\\' ) )
 		{
 			targetPath.appendCString( "clcsrc" );
 		}
@@ -516,7 +516,6 @@ Main:CLObject
 			
 			cFilePath = filePath.cString( );
 			classFile = fopen( cFilePath , "r" );
-
             filePath:release( );
 
 			if ( classFile != NULL )

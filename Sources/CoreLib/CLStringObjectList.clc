@@ -174,7 +174,7 @@ CLStringObjectList:CLObject
 											char		theCharacter )
 	{
 	
-		struct CLChar*	link;
+		char*	ptr;
 		CLString*		word;
 		CLObjectList*	result;
 
@@ -186,12 +186,13 @@ CLStringObjectList:CLObject
 		result.init( );
 		word.init( );
 	
-		link = theString.head;
+		ptr = theString.cstrPtr;
 
-		while ( link != NULL )
+		if( ptr ) {
+		while ( *ptr )
 		{
 
-			if ( link->character == theCharacter )
+			if ( *ptr == theCharacter )
 			{
 
 				if ( word.length > 0 )
@@ -208,12 +209,13 @@ CLStringObjectList:CLObject
 			else
 			{
 			
-				word:appendCharacter( link->character );
+				word:appendCharacter( *ptr );
 			
 			}
 
-			link = link->next;
+			++ptr;
 
+		}
 		}
 				
 		if ( word.length > 0 ) result:addObject( ( CLObject* ) word );

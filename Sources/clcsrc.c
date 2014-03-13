@@ -130,9 +130,6 @@ int Main_init (struct Main* self, int theCount , const char * theTokens [ ] )
 	}
 	else printf("Usage : clcc ClassNameA ClassNameB ClassNameN -p SourcePathA -p SourcePathB -p SourcePathN -o OutputPath");
 	printf("\n");
-	while(1)
-	{
-	}
 	return 0;
 }
 void Main_analyzeParameters (struct Main* self, int theCount , char * * theTokens ) 
@@ -190,7 +187,7 @@ void Main_analyzeParameters (struct Main* self, int theCount , char * * theToken
 		CLString_init(onePath );
 		CLObjectList_addObject(self->pathsList, (cast_object( &CLObject_ClassInstance , onePath)));
 	}
-	if(self->targetPath->length==0||(self->targetPath->last)->character=='/'||(self->targetPath->last)->character=='\\')
+	if(self->targetPath->length==0||self->targetPath->_class->endsWith( (void*) self->targetPath->_components[0], '/')||self->targetPath->_class->endsWith( (void*) self->targetPath->_components[0], '\\'))
 	{
 		self->targetPath->_class->appendCString( (void*) self->targetPath->_components[0], "clcsrc");
 	}
@@ -471,12 +468,11 @@ void Main_destruct (struct Main* self )
 }
 void Main_retain (struct Main* self ) 
 {
-	self->retainCount=self->retainCount+1;
+	++self->retainCount;
 }
 void Main_release (struct Main* self ) 
 {
-	self->retainCount=self->retainCount-1;
-	if(self->retainCount==0)
+	if(--self->retainCount==0)
 	{
 		self->_class->destruct( (void*) self->_components[0] );
 		free_object(self);
@@ -519,12 +515,11 @@ void CLObject_destruct (struct CLObject* self )
 }
 void CLObject_retain (struct CLObject* self ) 
 {
-	self->retainCount=self->retainCount+1;
+	++self->retainCount;
 }
 void CLObject_release (struct CLObject* self ) 
 {
-	self->retainCount=self->retainCount-1;
-	if(self->retainCount==0)
+	if(--self->retainCount==0)
 	{
 		self->_class->destruct( (void*) self->_components[0] );
 		free_object(self);
@@ -546,6 +541,7 @@ void CLString_CreateClass( )
 	CLString_ClassInstance->appendCharacter=CLString_appendCharacter;
 	CLString_ClassInstance->appendString=CLString_appendString;
 	CLString_ClassInstance->appendCString=CLString_appendCString;
+	CLString_ClassInstance->appendCStringWithSize=CLString_appendCStringWithSize;
 	CLString_ClassInstance->removeAllCharacters=CLString_removeAllCharacters;
 	CLString_ClassInstance->readFile=CLString_readFile;
 	CLString_ClassInstance->readFilePointer=CLString_readFilePointer;
@@ -556,6 +552,8 @@ void CLString_CreateClass( )
 	CLString_ClassInstance->stringByRemovingLastPathComponent=CLString_stringByRemovingLastPathComponent;
 	CLString_ClassInstance->containsString=CLString_containsString;
 	CLString_ClassInstance->indexOfString=CLString_indexOfString;
+	CLString_ClassInstance->startsWith=CLString_startsWith;
+	CLString_ClassInstance->endsWith=CLString_endsWith;
 	CLString_ClassInstance->equals=CLString_equals;
 	CLString_ClassInstance->cString=CLString_cString;
 	CLString_ClassInstance->describe=CLString_describe;
@@ -585,8 +583,7 @@ struct CLString* CLString_alloc( )
 void CLString_init (struct CLString* self ) 
 {
 	CLObject_init(( cast_object( &CLObject_ClassInstance , self)));
-	self->head=NULL;
-	self->last=NULL;
+	self->cstrPtr=NULL;
 	self->length=0;
 }
 void CLString_initWithString (struct CLString* self, struct CLString * theString ) 
@@ -606,291 +603,218 @@ void CLString_destruct (struct CLString* self )
 }
 void CLString_appendCharacter (struct CLString* self, char theCharacter ) 
 {
-	struct CLChar*newChar;
-	newChar=malloc(sizeof(struct CLChar));
-	newChar->next=NULL;
-	newChar->character=theCharacter;
-	if(self->head==NULL)self->head=newChar;
-	else self->last->next=newChar;
-	self->last=newChar;
-	self->length=self->length+1;
+	size_t newLength=self->length+sizeof(char);
+	self->cstrPtr=realloc(self->cstrPtr,newLength+1);
+	self->cstrPtr[self->length]=theCharacter;
+	self->cstrPtr[newLength]='\0';
+	self->length=newLength;
 }
 void CLString_appendString (struct CLString* self, struct CLString * theString ) 
 {
-	struct CLChar*link;
-	if(theString!=NULL&&theString->length>0)
+	if(theString!=NULL&&theString->length)
 	{
-		link=theString->head;
-		while(link!=NULL)
-		{
-			CLString_appendCharacter( self, link->character);
-			link=link->next;
-		}
+		size_t newLength=self->length+theString->length;
+		self->cstrPtr=realloc(self->cstrPtr,newLength+1);
+		memcpy(self->cstrPtr+self->length,theString->cstrPtr,theString->length);
+		self->cstrPtr[newLength]='\0';
+		self->length=newLength;
 	}
 }
 void CLString_appendCString (struct CLString* self, char * theString ) 
 {
-	while(*theString!='\0')
+	if(theString)
 	{
-		CLString_appendCharacter( self, *theString);
-		theString+=1;
+		size_t theStringLength=strlen(theString);
+		CLString_appendCStringWithSize( self, theString,theStringLength);
+	}
+}
+void CLString_appendCStringWithSize (struct CLString* self, char * theString , size_t size ) 
+{
+	if(theString&&size)
+	{
+		size_t newLength=self->length+size;
+		self->cstrPtr=realloc(self->cstrPtr,newLength+1);
+		memcpy(self->cstrPtr+self->length,theString,size);
+		self->cstrPtr[newLength]='\0';
+		self->length=newLength;
 	}
 }
 void CLString_removeAllCharacters (struct CLString* self ) 
 {
-	struct CLChar*link;
-	struct CLChar*prev;
-	link=self->head;
-	prev=NULL;
-	while(link!=NULL)
-	{
-		prev=link;
-		link=link->next;
-		free(prev);
-	}
-	self->head=NULL;
-	self->last=NULL;
+	if(self->cstrPtr)free(self->cstrPtr);
+	self->cstrPtr=NULL;
 	self->length=0;
 }
 void CLString_readFile (struct CLString* self, struct CLString * thePath ) 
 {
-	char*fileName;
-	int character;
-	FILE*filePointer;
-	fileName=thePath->_class->cString( (void*) thePath->_components[0] );
-	filePointer=fopen(fileName,"r");
+	char*fileName=thePath->_class->cString( (void*) thePath->_components[0] );
+	FILE*filePointer=fopen(fileName,"r");
 	if(filePointer!=NULL)
 	{
-		character=getc(filePointer);
-		while(character!=EOF)
-		{
-			CLString_appendCharacter( self, character);
-			character=getc(filePointer);
-		}
+		CLString_readFilePointer( self, filePointer);
 		fclose(filePointer);
 	}
 	free(fileName);
 }
 void CLString_readFilePointer (struct CLString* self, FILE * thePointer ) 
 {
-	int character;
-	character=getc(thePointer);
-	while(character!=EOF)
-	{
-		CLString_appendCharacter( self, character);
-		character=getc(thePointer);
-	}
-	fclose(thePointer);
+	long int prev=ftell(thePointer);
+	fseek(thePointer,0L,SEEK_END);
+	long int sz=ftell(thePointer);
+	fseek(thePointer,prev,SEEK_SET);
+	size_t newLength=self->length+sz;
+	self->cstrPtr=realloc(self->cstrPtr,newLength+1);
+	size_t result=fread(self->cstrPtr+self->length,sizeof(char),sz,thePointer);
+	self->cstrPtr[newLength]='\0';
+	self->length=newLength;
 }
 void CLString_writeToFile (struct CLString* self, struct CLString * thePath ) 
 {
-	char*fileName;
-	FILE*filePointer;
-	struct CLChar*link;
-	fileName=thePath->_class->cString( (void*) thePath->_components[0] );
-	filePointer=fopen(fileName,"w");
-	link=self->head;
-	while(link!=NULL)
+	if(self->length)
 	{
-		putc(link->character,filePointer);
-		link=link->next;
+		char*fileName;
+		FILE*filePointer;
+		fileName=thePath->cstrPtr;
+		filePointer=fopen(fileName,"w");
+		CLString_writeToFilePointer( self, filePointer);
+		fclose(filePointer);
 	}
-	fclose(filePointer);
-	free(fileName);
 }
 void CLString_writeToFilePointer (struct CLString* self, FILE * theFilePointer ) 
 {
-	struct CLChar*link;
-	link=self->head;
-	while(link!=NULL)
+	if(self->length)
 	{
-		putc(link->character,theFilePointer);
-		link=link->next;
+		fwrite(self->cstrPtr,sizeof(char),self->length,theFilePointer);
 	}
 }
 struct CLString * CLString_stringWithLastPathComponent (struct CLString* self ) 
 {
-	struct CLChar*link;
 	struct CLString*result;
-	link=self->head;
 	result=CLString_alloc( );
 	CLString_init(result );
-	while(link!=NULL)
+	if(self->length)
 	{
-		if(link->character=='/'||link->character=='\\')
+		int i,pos=0;
+		for(i=0;
+		i<self->length;
+		++i)
 		{
-			result->_class->release( (void*) result->_components[0] );
-			result=CLString_alloc();
-			result->_class->init( (void*) result->_components[0] );
+			if(self->cstrPtr[i]=='/'||self->cstrPtr[i]=='\\')
+			{
+				pos=i+1;
+			}
 		}
-		else result->_class->appendCharacter( (void*) result->_components[0], link->character);
-		link=link->next;
+		CLString_appendCString(result, self->cstrPtr+pos);
 	}
 	return result;
 }
 struct CLString * CLString_stringByRemovingExtension (struct CLString* self ) 
 {
-	struct CLChar*link;
-	struct CLString*part;
 	struct CLString*result;
-	char inExtension;
-	link=self->head;
-	inExtension=0;
-	part=CLString_alloc( );
 	result=CLString_alloc( );
-	CLString_init(part );
 	CLString_init(result );
-	while(link!=NULL)
+	if(self->length)
 	{
-		if(link->character=='.')
+		int i,pos=0;
+		for(i=self->length-1;
+		i>=0;
+		--i)
 		{
-			inExtension=1;
-			CLString_appendString(result, part);
-			CLString_release(part );
-			part=CLString_alloc();
-			CLString_init(part );
+			if(self->cstrPtr[i]=='.')
+			{
+				pos=i;
+				break;
+			}
 		}
-		else if(inExtension==1)inExtension=0;
-		CLString_appendCharacter(part, link->character);
-		link=link->next;
+		CLString_appendCStringWithSize(result, self->cstrPtr,pos);
 	}
-	CLString_release(part );
 	return result;
 }
 struct CLString * CLString_stringByRemovingLastPathComponent (struct CLString* self ) 
 {
-	struct CLChar*link;
-	struct CLString*part;
 	struct CLString*result;
-	link=self->head;
 	result=CLString_alloc( );
-	part=CLString_alloc( );
 	CLString_init(result );
-	CLString_init(part );
-	while(link!=NULL)
+	if(self->length)
 	{
-		CLString_appendCharacter(part, link->character);
-		if(link->character=='/'||link->character=='\\')
+		int i,pos=0;
+		for(i=self->length-1;
+		i>=0;
+		--i)
 		{
-			CLString_appendString(result, part);
-			CLString_release(part );
-			part=CLString_alloc();
-			CLString_init(part );
+			if(self->cstrPtr[i]=='/'||self->cstrPtr[i]=='\\')
+			{
+				pos=i;
+				break;
+			}
 		}
-		link=link->next;
+		CLString_appendCStringWithSize(result, self->cstrPtr,pos);
 	}
-	if(result->length==0) CLString_appendString(result, part);
-	CLString_release(part );
 	return result;
 }
 char CLString_containsString (struct CLString* self, struct CLString * theString ) 
 {
-	struct CLChar*link;
-	struct CLChar*search;
-	link=self->head;
-	search=theString->head;
-	while(link!=NULL)
-	{
-		if(link->character==search->character)
-		{
-			search=search->next;
-			if(search==NULL)return 1;
-		}
-		else
-		{
-			search=theString->head;
-		}
-		link=link->next;
-	}
-	return 0;
+	return CLString_indexOfString( self, theString)>=0;
 }
-unsigned long CLString_indexOfString (struct CLString* self, struct CLString * theSearchString ) 
+int CLString_indexOfString (struct CLString* self, struct CLString * theSearchString ) 
 {
-	char found;
-	unsigned long result;
-	unsigned long index;
-	struct CLChar*link;
-	struct CLChar*search;
-	found=0;
-	result=0;
-	index=0;
-	link=self->head;
-	search=theSearchString->head;
-	while(link!=NULL)
+	int result=-1;
+	if(self->length&&theSearchString->length)
 	{
-		if(link->character==search->character)
+		char*s=strstr(self->cstrPtr,theSearchString->cstrPtr);
+		if(s)
 		{
-			if(found==0)
-			{
-				found=1;
-				result=index;
-			}
-			search=search->next;
-			if(search==NULL)return result;
+			result=s-self->cstrPtr;
 		}
-		else
-		{
-			found=0;
-			search=theSearchString->head;
-		}
-		link=link->next;
-		index=index+1;
 	}
 	return result;
 }
+int CLString_startsWith (struct CLString* self, char c ) 
+{
+	return(self->length&&self->cstrPtr[0]==c);
+}
+int CLString_endsWith (struct CLString* self, char c ) 
+{
+	return(self->length&&self->cstrPtr[self->length-1]==c);
+}
 char CLString_equals (struct CLString* self, struct CLString * theStringB ) 
 {
-	struct CLChar*linkA;
-	struct CLChar*linkB;
+	int i;
 	if(self->length!=theStringB->length)return 0;
-	linkA=self->head;
-	linkB=theStringB->head;
-	while(linkA!=NULL&&linkB!=NULL)
+	if(!self->length||!theStringB->length)return 0;
+	for(i=0;
+	self->cstrPtr[i]&&theStringB->cstrPtr[i];
+	++i)
 	{
-		if(linkA->character!=linkB->character)return 0;
-		linkA=linkA->next;
-		linkB=linkB->next;
+		if(self->cstrPtr[i]!=theStringB->cstrPtr[i])return 0;
 	}
 	return 1;
 }
 char * CLString_cString (struct CLString* self ) 
 {
-	int index;
-	char*result;
-	struct CLChar*link;
-	if(self->head!=NULL)
+	if(self->length)
 	{
-		link=self->head;
-		result=malloc(sizeof(char)*(self->length+1));
-		index=0;
-		while(link!=NULL&&link->character!=0)
-		{
-			result[index++]=link->character;
-			link=link->next;
-		}
-		result[index]=0;
+		char*result;
+		result=malloc(self->length+1);
+		memcpy(result,self->cstrPtr,self->length+1);
 		return result;
 	}
 	else return NULL;
 }
 void CLString_describe (struct CLString* self ) 
 {
-	struct CLChar*link;
-	link=self->head;
-	while(link!=NULL)
+	if(self->length)
 	{
-		printf("%c",link->character);
-		link=link->next;
+		printf("%s",self->cstrPtr);
 	}
 }
 void CLString_retain (struct CLString* self ) 
 {
-	self->retainCount=self->retainCount+1;
+	++self->retainCount;
 }
 void CLString_release (struct CLString* self ) 
 {
-	self->retainCount=self->retainCount-1;
-	if(self->retainCount==0)
+	if(--self->retainCount==0)
 	{
 		self->_class->destruct( (void*) self->_components[0] );
 		free_object(self);
@@ -1131,12 +1055,11 @@ void CLObjectList_describe (struct CLObjectList* self )
 }
 void CLObjectList_retain (struct CLObjectList* self ) 
 {
-	self->retainCount=self->retainCount+1;
+	++self->retainCount;
 }
 void CLObjectList_release (struct CLObjectList* self ) 
 {
-	self->retainCount=self->retainCount-1;
-	if(self->retainCount==0)
+	if(--self->retainCount==0)
 	{
 		self->_class->destruct( (void*) self->_components[0] );
 		free_object(self);
@@ -1257,31 +1180,34 @@ void CLStringObjectList_addStringsAsUnique (struct CLStringObjectList* self, str
 }
 struct CLObjectList * CLStringObjectList_splitStringByCharacter (struct CLStringObjectList* self, struct CLString * theString , char theCharacter ) 
 {
-	struct CLChar*link;
+	char*ptr;
 	struct CLString*word;
 	struct CLObjectList*result;
 	result=CLObjectList_alloc( );
 	word=CLString_alloc( );
 	result->_class->init( (void*) result->_components[0] );
 	word->_class->init( (void*) word->_components[0] );
-	link=theString->head;
-	while(link!=NULL)
+	ptr=theString->cstrPtr;
+	if(ptr)
 	{
-		if(link->character==theCharacter)
+		while(*ptr)
 		{
-			if(word->length>0)
+			if(*ptr==theCharacter)
 			{
-				CLObjectList_addObject(result, (cast_object( &CLObject_ClassInstance , word)));
-				word->_class->release( (void*) word->_components[0] );
-				word=CLString_alloc();
-				word->_class->init( (void*) word->_components[0] );
+				if(word->length>0)
+				{
+					CLObjectList_addObject(result, (cast_object( &CLObject_ClassInstance , word)));
+					word->_class->release( (void*) word->_components[0] );
+					word=CLString_alloc();
+					word->_class->init( (void*) word->_components[0] );
+				}
 			}
+			else
+			{
+				CLString_appendCharacter(word, *ptr);
+			}
+			++ptr;
 		}
-		else
-		{
-			CLString_appendCharacter(word, link->character);
-		}
-		link=link->next;
 	}
 	if(word->length>0) CLObjectList_addObject(result, (cast_object( &CLObject_ClassInstance , word)));
 	word->_class->release( (void*) word->_components[0] );
@@ -1297,12 +1223,11 @@ void CLStringObjectList_destruct (struct CLStringObjectList* self )
 }
 void CLStringObjectList_retain (struct CLStringObjectList* self ) 
 {
-	self->retainCount=self->retainCount+1;
+	++self->retainCount;
 }
 void CLStringObjectList_release (struct CLStringObjectList* self ) 
 {
-	self->retainCount=self->retainCount-1;
-	if(self->retainCount==0)
+	if(--self->retainCount==0)
 	{
 		self->_class->destruct( (void*) self->_components[0] );
 		free_object(self);
@@ -1535,7 +1460,7 @@ void Creator_createClassStruct (struct Creator* self, struct CLString * theClass
 				if(token->mainType==kTokenMainTypeSymbol)
 				{
 					CLString_appendString(result, token->text);
-					if((token->text->head)->character=='('&&firstParenthese==0)
+					if(token->text->_class->startsWith( (void*) token->text->_components[0], '(')&&firstParenthese==0)
 					{
 						firstParenthese=1;
 						CLString_appendCString(result, "struct ");
@@ -1544,7 +1469,7 @@ void Creator_createClassStruct (struct Creator* self, struct CLString * theClass
 						if(tokenLink->next!=NULL)
 						{
 							struct Token*nextToken=(cast_object( &Token_ClassInstance , tokenLink->next->data));
-							if((nextToken->text->head)->character!=')') CLString_appendCString(result, ",");
+							if(!nextToken->text->_class->startsWith( (void*) nextToken->text->_components[0], ')')) CLString_appendCString(result, ",");
 						}
 					}
 				}
@@ -1819,13 +1744,13 @@ void Creator_createMethodFunction (struct Creator* self, struct CLString * theCl
 		{
 			firstData=(line->head)->data;
 			first=(cast_object( &Token_ClassInstance , firstData));
-			if(line->length==1&&(first->text->head)->character=='}')blockDepth-=1;
+			if(line->length==1&&first->text->_class->startsWith( (void*) first->text->_components[0], '}'))blockDepth-=1;
 			for(index=0;
 			index<blockDepth;
 			index++) CLString_appendCString(result, "\t");
 			Creator_createFunctionLine( self, result,theClassName,line);
 			if(lineLink!=theMethodList->last) CLString_appendCString(result, "\n");
-			if(line->length==1&&(first->text->head)->character=='{')blockDepth+=1;
+			if(line->length==1&&first->text->_class->startsWith( (void*) first->text->_components[0], '{'))blockDepth+=1;
 		}
 		lineLink=lineLink->next;
 	}
@@ -1848,7 +1773,7 @@ void Creator_createFunctionHeader (struct Creator* self, struct CLString * theRe
 		if(oneToken->mainType==kTokenMainTypeSymbol)
 		{
 			CLString_appendString(theResult, oneToken->text);
-			if((oneToken->text->head)->character=='('&&firstParenthese==0)
+			if(oneToken->text->_class->startsWith( (void*) oneToken->text->_components[0], '(')&&firstParenthese==0)
 			{
 				firstParenthese=1;
 				CLString_appendCString(theResult, "struct ");
@@ -1857,7 +1782,7 @@ void Creator_createFunctionHeader (struct Creator* self, struct CLString * theRe
 				if(tokenLink->next!=NULL)
 				{
 					struct Token*nextToken=(cast_object( &Token_ClassInstance , tokenLink->next->data));
-					if((nextToken->text->head)->character!=')') CLString_appendCString(theResult, ",");
+					if(!nextToken->text->_class->startsWith( (void*) nextToken->text->_components[0], ')')) CLString_appendCString(theResult, ",");
 				}
 			}
 		}
@@ -2001,7 +1926,7 @@ void Creator_createFunctionLine (struct Creator* self, struct CLString * theResu
 			{
 				if(inCasting==1) CLString_appendCString(result, "))");
 				inCasting=0;
-				if((oneToken->text->head)->character=='}'&&oneToken->linkId!=NULL)
+				if(oneToken->text->_class->startsWith( (void*) oneToken->text->_components[0], '}')&&oneToken->linkId!=NULL)
 				{
 					CLString_appendString(result, oneToken->linkId);
 					CLString_appendCString(result, "=");
@@ -2019,7 +1944,7 @@ void Creator_createFunctionLine (struct Creator* self, struct CLString * theResu
 		}
 		else
 		{
-			if((result->last)->character!='\t'&&(result->last)->character!=' ') CLString_appendCString(result, " ");
+			if((!result->_class->endsWith( (void*) result->_components[0], '\t'))&&(!result->_class->endsWith( (void*) result->_components[0], ' '))) CLString_appendCString(result, " ");
 		}
 		lastToken=oneToken;
 		tokenLink=tokenLink->next;
@@ -2031,7 +1956,7 @@ char Creator_parameterFollows (struct Creator* self, struct CLLink * theLink )
 	if(theLink->next!=NULL&&theLink->next->next!=NULL)
 	{
 		nextToken=(cast_object( &Token_ClassInstance , theLink->next->next->data));
-		if((nextToken->text->head)->character!=')')return 1;
+		if(!nextToken->text->_class->startsWith( (void*) nextToken->text->_components[0], ')'))return 1;
 	}
 	return 0;
 }
@@ -2045,12 +1970,11 @@ void Creator_destruct (struct Creator* self )
 }
 void Creator_retain (struct Creator* self ) 
 {
-	self->retainCount=self->retainCount+1;
+	++self->retainCount;
 }
 void Creator_release (struct Creator* self ) 
 {
-	self->retainCount=self->retainCount-1;
-	if(self->retainCount==0)
+	if(--self->retainCount==0)
 	{
 		self->_class->destruct( (void*) self->_components[0] );
 		free_object(self);
@@ -2159,7 +2083,7 @@ void Analyzer_analyzeGeneral (struct Analyzer* self, struct Line * theLine , lon
 	{
 		lastData=(theLine->tokens->last)->data;
 		lastToken=(cast_object( &Token_ClassInstance , lastData));
-		if(lastToken->mainType==kTokenMainTypeSymbol&&(lastToken->text->head)->character==';')
+		if(lastToken->mainType==kTokenMainTypeSymbol&&lastToken->text->_class->startsWith( (void*) lastToken->text->_components[0], ';'))
 		{
 			memberName=Analyzer_extractMemberName( self, theLine->tokens);
 			if(memberName!=NULL)
@@ -2277,7 +2201,8 @@ struct CLString * Analyzer_extractMemberName (struct Analyzer* self, struct CLOb
 		oneToken=(cast_object( &Token_ClassInstance , object));
 		if(oneToken->mainType==kTokenMainTypeSymbol)
 		{
-			if((oneToken->text->head)->character==';'||(oneToken->text->head)->character=='['||(oneToken->text->head)->character==')')return lastWord;
+			char c=oneToken->text->cstrPtr?*(oneToken->text->cstrPtr):'\0';
+			if(c==';'||c=='['||c==')')return lastWord;
 		}
 		else if(oneToken->mainType==kTokenMainTypeWord)lastWord=oneToken->text;
 	link13=link13->next;}
@@ -2293,7 +2218,7 @@ struct CLString * Analyzer_extractMethodName (struct Analyzer* self, struct CLOb
 	link14=theTokens->head;while( link14!=NULL){object=link14->data; 
 	
 		oneToken=(cast_object( &Token_ClassInstance , object));
-		if(oneToken->mainType==kTokenMainTypeSymbol&&(oneToken->text->head)->character=='(')return lastWord;
+		if(oneToken->mainType==kTokenMainTypeSymbol&&oneToken->text->_class->startsWith( (void*) oneToken->text->_components[0], '('))return lastWord;
 		else if(oneToken->mainType==kTokenMainTypeWord)lastWord=oneToken->text;
 	link14=link14->next;}
 	return NULL;
@@ -2337,7 +2262,8 @@ void Analyzer_analyzeMembers (struct Analyzer* self, struct ClassElements * theE
 			}
 			else if(oneToken->mainType==kTokenMainTypeSymbol)
 			{
-				if((oneToken->text->head)->character==';'||(oneToken->text->head)->character=='['||(oneToken->text->head)->character==')')
+				char c=oneToken->text->cstrPtr?*(oneToken->text->cstrPtr):'\0';
+				if(c==';'||c=='['||c==')')
 				{
 					lastToken->subType=kTokenSubTypeVariable;
 					lastToken->isMember=1;
@@ -2449,12 +2375,13 @@ void Analyzer_analyzeMethodDef (struct Analyzer* self, struct CLObjectList * the
 		{
 			if(lastToken->mainType==kTokenMainTypeWord)
 			{
-				if((oneToken->text->head)->character=='(')
+				char c=oneToken->text->cstrPtr?*(oneToken->text->cstrPtr):'\0';
+				if(c=='(')
 				{
 					lastToken->subType=kTokenSubTypeMethod;
 					lastToken->_class->setClassId( (void*) lastToken->_components[0], theElements->className);
 				}
-				if((oneToken->text->head)->character==','||(oneToken->text->head)->character=='['||(oneToken->text->head)->character==')')
+				if(c==','||c=='['||c==')')
 				{
 					lastToken->subType=kTokenSubTypeVariable;
 				}
@@ -2518,12 +2445,12 @@ void Analyzer_analyzeLine (struct Analyzer* self, struct CLObjectList * theLine 
 			}
 			else if(oneToken->mainType==kTokenMainTypeSymbol)
 			{
-				if((oneToken->text->head)->character=='-')
+				if(oneToken->text->_class->startsWith( (void*) oneToken->text->_components[0], '-'))
 				{
 					if(tokenLink->next!=NULL)
 					{
 						nextToken=(cast_object( &Token_ClassInstance , tokenLink->next->data));
-						if(nextToken->mainType==kTokenMainTypeSymbol&&(nextToken->text->head)->character=='>')
+						if(nextToken->mainType==kTokenMainTypeSymbol&&nextToken->text->_class->startsWith( (void*) nextToken->text->_components[0], '>'))
 						{
 							oneToken->subType=kTokenSubTypeStructAccessor;
 							nextToken->subType=kTokenSubTypeStructAccessor;
@@ -2534,7 +2461,7 @@ void Analyzer_analyzeLine (struct Analyzer* self, struct CLObjectList * theLine 
 				}
 				else
 				{
-					if((oneToken->text->head)->character=='{')
+					if(oneToken->text->_class->startsWith( (void*) oneToken->text->_components[0], '{'))
 					{
 						oneScope=Scope_alloc( );
 						Scope_init(oneScope );
@@ -2549,7 +2476,7 @@ void Analyzer_analyzeLine (struct Analyzer* self, struct CLObjectList * theLine 
 						CLObjectList_addObject(theScopeList, (cast_object( &CLObject_ClassInstance , oneScope)));
 						scope=oneScope;
 					}
-					else if((oneToken->text->head)->character=='}')
+					else if(oneToken->text->_class->startsWith( (void*) oneToken->text->_components[0], '}'))
 					{
 						if(scope->scopeLink!=NULL)oneToken->_class->setLinkId( (void*) oneToken->_components[0], scope->scopeLink);
 						CLObjectList_removeObject(theScopeList, (cast_object( &CLObject_ClassInstance , scope)));
@@ -2588,7 +2515,7 @@ void Analyzer_analyzeForEachToken (struct Analyzer* self, struct CLLink * * theL
 	if(tokenLink->next!=NULL&&tokenLink->next->next!=NULL&&tokenLink->next->next->next!=NULL&&tokenLink->next->next->next->next!=NULL&&tokenLink->next->next->next->next->next!=NULL&&tokenLink->next->next->next->next->next->next!=NULL&&tokenLink->next->next->next->next->next->next->next!=NULL)
 	{
 		dbleToken=(cast_object( &Token_ClassInstance , tokenLink->next->next->next->next->next->data));
-		if((dbleToken->text->head)->character==':')
+		if(dbleToken->text->_class->startsWith( (void*) dbleToken->text->_components[0], ':'))
 		{
 			openToken=(cast_object( &Token_ClassInstance , tokenLink->next->data));
 			typeToken=(cast_object( &Token_ClassInstance , tokenLink->next->next->data));
@@ -2618,7 +2545,7 @@ void Analyzer_analyzeForEachToken (struct Analyzer* self, struct CLLink * * theL
 						CLString_appendString(containerId, oneToken->text);
 						oneToken->mainType=kTokenMainTypeUndefined;
 					}
-					else if(oneToken->mainType==kTokenMainTypeSymbol&&(oneToken->text->head)->character=='.')
+					else if(oneToken->mainType==kTokenMainTypeSymbol&&oneToken->text->_class->startsWith( (void*) oneToken->text->_components[0], '.'))
 					{
 						CLString_appendCString(containerId, "->");
 						oneToken->mainType=kTokenMainTypeUndefined;
@@ -2724,7 +2651,7 @@ void Analyzer_analyzeClassToken (struct Analyzer* self, struct CLLink * * theLin
 	{
 		nextToken=(cast_object( &Token_ClassInstance , tokenLink->next->data));
 		wordToken=(cast_object( &Token_ClassInstance , tokenLink->next->next->data));
-		if((nextToken->text->head)->character==':'&&wordToken->mainType==kTokenMainTypeWord)
+		if(nextToken->text->_class->startsWith( (void*) nextToken->text->_components[0], ':')&&wordToken->mainType==kTokenMainTypeWord)
 		{
 			token->subType=kTokenSubTypeExplicitCallClass;
 			nextToken->subType=kTokenSubTypeExplicitAccessor;
@@ -2752,7 +2679,7 @@ void Analyzer_analyzeClassToken (struct Analyzer* self, struct CLLink * * theLin
 				}
 			}
 		}
-		else if((nextToken->text->head)->character=='*'&&wordToken->mainType==kTokenMainTypeWord)
+		else if(nextToken->text->_class->startsWith( (void*) nextToken->text->_components[0], '*')&&wordToken->mainType==kTokenMainTypeWord)
 		{
 			wordToken->_class->setClassId( (void*) wordToken->_components[0], token->text);
 			wordToken->subType=kTokenSubTypeInstance;
@@ -2760,7 +2687,7 @@ void Analyzer_analyzeClassToken (struct Analyzer* self, struct CLLink * * theLin
 			theScope->instanceNamesList->_class->addObject( (void*) theScope->instanceNamesList->_components[0], (cast_object( &CLObject_ClassInstance , wordToken->text)));
 			*theLinkAddress=tokenLink->next->next;
 		}
-		else if((nextToken->text->head)->character=='*'&&(wordToken->text->head)->character==')')
+		else if(nextToken->text->_class->startsWith( (void*) nextToken->text->_components[0], '*')&&wordToken->text->_class->startsWith( (void*) wordToken->text->_components[0], ')'))
 		{
 			token->subType=kTokenSubTypeCast;
 			nextToken->mainType=kTokenMainTypeUndefined;
@@ -2780,7 +2707,7 @@ void Analyzer_analyzeMethodToken (struct Analyzer* self, struct CLLink * * theLi
 	if(tokenLink->next!=NULL)
 	{
 		nextToken=(cast_object( &Token_ClassInstance , tokenLink->next->data));
-		if(nextToken->mainType==kTokenMainTypeSymbol&&(nextToken->text->head)->character=='(')
+		if(nextToken->mainType==kTokenMainTypeSymbol&&nextToken->text->_class->startsWith( (void*) nextToken->text->_components[0], '('))
 		{
 			nextToken->mainType=kTokenMainTypeUndefined;
 		}
@@ -2851,14 +2778,14 @@ void Analyzer_analyzeInstanceList (struct Analyzer* self, struct CLLink * * theL
 		while(tokenLink!=NULL)
 		{
 			oneToken=(cast_object( &Token_ClassInstance , tokenLink->data));
-			if(oneToken->mainType==kTokenMainTypeSymbol&&(oneToken->text->head)->character==':')
+			if(oneToken->mainType==kTokenMainTypeSymbol&&oneToken->text->_class->startsWith( (void*) oneToken->text->_components[0], ':'))
 			{
 				oneToken->subType=kTokenSubTypeExplicitAccessor;
 				oneToken->mainType=kTokenMainTypeUndefined;
 				isImplicit=0;
 				startToken->mainType=kTokenMainTypeUndefined;
 			}
-			else if(oneToken->mainType==kTokenMainTypeSymbol&&(oneToken->text->head)->character=='.')
+			else if(oneToken->mainType==kTokenMainTypeSymbol&&oneToken->text->_class->startsWith( (void*) oneToken->text->_components[0], '.'))
 			{
 				oneToken->subType=kTokenSubTypeImplicitAccessor;
 				isImplicit=1;
@@ -2870,7 +2797,7 @@ void Analyzer_analyzeInstanceList (struct Analyzer* self, struct CLLink * * theL
 				if(tokenLink->next!=NULL)
 				{
 					nextToken=(cast_object( &Token_ClassInstance , tokenLink->next->data));
-					if(nextToken->mainType==kTokenMainTypeSymbol&&(nextToken->text->head)->character=='(')
+					if(nextToken->mainType==kTokenMainTypeSymbol&&nextToken->text->_class->startsWith( (void*) nextToken->text->_components[0], '('))
 					{
 						nextToken->mainType=kTokenMainTypeUndefined;
 						if(isImplicit==1)oneToken->subType=kTokenSubTypeImplicitCall;
@@ -2905,12 +2832,11 @@ void Analyzer_destruct (struct Analyzer* self )
 }
 void Analyzer_retain (struct Analyzer* self ) 
 {
-	self->retainCount=self->retainCount+1;
+	++self->retainCount;
 }
 void Analyzer_release (struct Analyzer* self ) 
 {
-	self->retainCount=self->retainCount-1;
-	if(self->retainCount==0)
+	if(--self->retainCount==0)
 	{
 		self->_class->destruct( (void*) self->_components[0] );
 		free_object(self);
@@ -2958,7 +2884,7 @@ void Tokenizer_createLines (struct Tokenizer* self, struct CLString * theString 
 	char inChars;
 	char inClass;
 	char inEscape;
-	struct CLChar*actualChar;
+	char*actualChar;
 	struct Line*actualLine;
 	struct Line**actualLinePointer;
 	actualLine=Line_alloc( );
@@ -2969,87 +2895,90 @@ void Tokenizer_createLines (struct Tokenizer* self, struct CLString * theString 
 	inChars=0;
 	inClass=0;
 	inEscape=0;
-	actualChar=theString->head;
-	while(actualChar!=NULL)
+	actualChar=theString->cstrPtr;
+	if(actualChar)
 	{
-		if(actualLine->type==kLineTypeSetting||actualLine->type==kLineTypeComment)
+		while(*actualChar)
 		{
-			if(actualChar->character=='\n'||actualChar->character=='\r')
+			if(actualLine->type==kLineTypeSetting||actualLine->type==kLineTypeComment)
 			{
-				Tokenizer_resetActualLine( self, actualLinePointer,theLines);
-				actualLine=*actualLinePointer;
-			}
-			else actualLine->text->_class->appendCharacter( (void*) actualLine->text->_components[0], actualChar->character);
-		}
-		else if(actualLine->type==kLineTypeGeneral)
-		{
-			if(inChars==1||inChar==1)
-			{
-				if(inEscape==0)
+				if(*actualChar=='\n'||*actualChar=='\r')
 				{
-					if(actualChar->character=='\\')inEscape=1;
-					if(inChar==1&&actualChar->character=='\'')inChar=0;
-					if(inChars==1&&actualChar->character=='"')inChars=0;
-				}
-				else inEscape=0;
-				actualLine->text->_class->appendCharacter( (void*) actualLine->text->_components[0], actualChar->character);
-			}
-			else
-			{
-				if(actualChar->character=='#')
-				{
-					if(actualLine->text->length==0)actualLine->type=kLineTypeSetting;
-					actualLine->text->_class->appendCharacter( (void*) actualLine->text->_components[0], actualChar->character);
-				}
-				else if(actualChar->character=='/')
-				{
-					if(actualLine->text->length==0)actualLine->type=kLineTypeComment;
-					actualLine->text->_class->appendCharacter( (void*) actualLine->text->_components[0], actualChar->character);
-				}
-				else if(actualChar->character==';')
-				{
-					actualLine->text->_class->appendCharacter( (void*) actualLine->text->_components[0], actualChar->character);
 					Tokenizer_resetActualLine( self, actualLinePointer,theLines);
 					actualLine=*actualLinePointer;
 				}
-				else if(actualChar->character=='{')
+				else actualLine->text->_class->appendCharacter( (void*) actualLine->text->_components[0], *actualChar);
+			}
+			else if(actualLine->type==kLineTypeGeneral)
+			{
+				if(inChars==1||inChar==1)
 				{
-					if(inClass==0)
+					if(inEscape==0)
 					{
-						actualLine->type=kLineTypeClassDef;
-						inClass=1;
+						if(*actualChar=='\\')inEscape=1;
+						if(inChar==1&&*actualChar=='\'')inChar=0;
+						if(inChars==1&&*actualChar=='"')inChars=0;
 					}
-					Tokenizer_resetActualLine( self, actualLinePointer,theLines);
-					actualLine->type=kLineTypeBlockStart;
-					actualLine->text->_class->appendCharacter( (void*) actualLine->text->_components[0], actualChar->character);
-					Tokenizer_resetActualLine( self, actualLinePointer,theLines);
-					actualLine=*actualLinePointer;
+					else inEscape=0;
+					actualLine->text->_class->appendCharacter( (void*) actualLine->text->_components[0], *actualChar);
 				}
-				else if(actualChar->character=='}')
+				else
 				{
-					Tokenizer_resetActualLine( self, actualLinePointer,theLines);
-					actualLine->type=kLineTypeBlockEnd;
-					actualLine->text->_class->appendCharacter( (void*) actualLine->text->_components[0], actualChar->character);
-					Tokenizer_resetActualLine( self, actualLinePointer,theLines);
-					actualLine=*actualLinePointer;
-				}
-				else if(actualChar->character=='\''||actualChar->character=='"')
-				{
-					if(actualChar->character=='\'')inChar=1;
-					if(actualChar->character=='"')inChars=1;
-					actualLine->text->_class->appendCharacter( (void*) actualLine->text->_components[0], actualChar->character);
-				}
-				else if(actualChar->character==' '||actualChar->character=='\t')
-				{
-					if(actualLine->text->length>0)actualLine->text->_class->appendCharacter( (void*) actualLine->text->_components[0], actualChar->character);
-				}
-				else if(actualChar->character!='\r'&&actualChar->character!='\n')
-				{
-					actualLine->text->_class->appendCharacter( (void*) actualLine->text->_components[0], actualChar->character);
+					if(*actualChar=='#')
+					{
+						if(actualLine->text->length==0)actualLine->type=kLineTypeSetting;
+						actualLine->text->_class->appendCharacter( (void*) actualLine->text->_components[0], *actualChar);
+					}
+					else if(*actualChar=='/')
+					{
+						if(actualLine->text->length==0)actualLine->type=kLineTypeComment;
+						actualLine->text->_class->appendCharacter( (void*) actualLine->text->_components[0], *actualChar);
+					}
+					else if(*actualChar==';')
+					{
+						actualLine->text->_class->appendCharacter( (void*) actualLine->text->_components[0], *actualChar);
+						Tokenizer_resetActualLine( self, actualLinePointer,theLines);
+						actualLine=*actualLinePointer;
+					}
+					else if(*actualChar=='{')
+					{
+						if(inClass==0)
+						{
+							actualLine->type=kLineTypeClassDef;
+							inClass=1;
+						}
+						Tokenizer_resetActualLine( self, actualLinePointer,theLines);
+						actualLine->type=kLineTypeBlockStart;
+						actualLine->text->_class->appendCharacter( (void*) actualLine->text->_components[0], *actualChar);
+						Tokenizer_resetActualLine( self, actualLinePointer,theLines);
+						actualLine=*actualLinePointer;
+					}
+					else if(*actualChar=='}')
+					{
+						Tokenizer_resetActualLine( self, actualLinePointer,theLines);
+						actualLine->type=kLineTypeBlockEnd;
+						actualLine->text->_class->appendCharacter( (void*) actualLine->text->_components[0], *actualChar);
+						Tokenizer_resetActualLine( self, actualLinePointer,theLines);
+						actualLine=*actualLinePointer;
+					}
+					else if(*actualChar=='\''||*actualChar=='"')
+					{
+						if(*actualChar=='\'')inChar=1;
+						if(*actualChar=='"')inChars=1;
+						actualLine->text->_class->appendCharacter( (void*) actualLine->text->_components[0], *actualChar);
+					}
+					else if(*actualChar==' '||*actualChar=='\t')
+					{
+						if(actualLine->text->length>0)actualLine->text->_class->appendCharacter( (void*) actualLine->text->_components[0], *actualChar);
+					}
+					else if(*actualChar!='\r'&&*actualChar!='\n')
+					{
+						actualLine->text->_class->appendCharacter( (void*) actualLine->text->_components[0], *actualChar);
+					}
 				}
 			}
+			++actualChar;
 		}
-		actualChar=actualChar->next;
 	}
 	Tokenizer_resetActualLine( self, actualLinePointer,theLines);
 	actualLine=*actualLinePointer;
@@ -3075,7 +3004,7 @@ void Tokenizer_createTokens (struct Tokenizer* self, struct CLString * theString
 	char inChar;
 	char inChars;
 	char inEscape;
-	struct CLChar*actualChar;
+	char*actualChar;
 	struct Token*actualToken;
 	struct Token**actualTokenPointer;
 	actualToken=Token_alloc( );
@@ -3085,65 +3014,68 @@ void Tokenizer_createTokens (struct Tokenizer* self, struct CLString * theString
 	inChar=0;
 	inChars=0;
 	inEscape=0;
-	actualChar=theString->head;
-	while(actualChar!=NULL)
+	actualChar=theString->cstrPtr;
+	if(actualChar)
 	{
-		if(inChars==1||inChar==1)
+		while(*actualChar)
 		{
-			if(inEscape==0)
+			if(inChars==1||inChar==1)
 			{
-				if(actualChar->character=='\\')inEscape=1;
-				if(inChar==1&&actualChar->character=='\'')
+				if(inEscape==0)
 				{
-					inChar=0;
-					Tokenizer_resetActualToken( self, actualTokenPointer,theTokens);
-					actualToken=*actualTokenPointer;
-					actualToken->mainType=kTokenMainTypeSymbol;
+					if(*actualChar=='\\')inEscape=1;
+					if(inChar==1&&*actualChar=='\'')
+					{
+						inChar=0;
+						Tokenizer_resetActualToken( self, actualTokenPointer,theTokens);
+						actualToken=*actualTokenPointer;
+						actualToken->mainType=kTokenMainTypeSymbol;
+					}
+					if(inChars==1&&*actualChar=='"')
+					{
+						inChars=0;
+						Tokenizer_resetActualToken( self, actualTokenPointer,theTokens);
+						actualToken=*actualTokenPointer;
+						actualToken->mainType=kTokenMainTypeSymbol;
+					}
 				}
-				if(inChars==1&&actualChar->character=='"')
-				{
-					inChars=0;
-					Tokenizer_resetActualToken( self, actualTokenPointer,theTokens);
-					actualToken=*actualTokenPointer;
-					actualToken->mainType=kTokenMainTypeSymbol;
-				}
-			}
-			else inEscape=0;
-			actualToken->text->_class->appendCharacter( (void*) actualToken->text->_components[0], actualChar->character);
-		}
-		else
-		{
-			if(actualChar->character=='\''||actualChar->character=='"')
-			{
-				if(actualChar->character=='\'')inChar=1;
-				if(actualChar->character=='"')inChars=1;
-				actualToken->mainType=kTokenMainTypeSymbol;
-				actualToken->text->_class->appendCharacter( (void*) actualToken->text->_components[0], actualChar->character);
-				Tokenizer_resetActualToken( self, actualTokenPointer,theTokens);
-				actualToken=*actualTokenPointer;
-				actualToken->mainType=kTokenMainTypeString;
-			}
-			else if(actualChar->character==' '||actualChar->character=='\t'||actualChar->character=='\n'||actualChar->character=='\r')
-			{
-				Tokenizer_resetActualToken( self, actualTokenPointer,theTokens);
-				actualToken=*actualTokenPointer;
-			}
-			else if(actualChar->character=='*'||actualChar->character=='/'||actualChar->character=='+'||actualChar->character=='-'||actualChar->character=='='||actualChar->character=='|'||actualChar->character=='&'||actualChar->character=='.'||actualChar->character==','||actualChar->character==':'||actualChar->character==';'||actualChar->character=='<'||actualChar->character=='>'||actualChar->character=='{'||actualChar->character=='}'||actualChar->character=='['||actualChar->character==']'||actualChar->character=='('||actualChar->character==')'||actualChar->character=='^'||actualChar->character=='!'||actualChar->character=='#'||actualChar->character=='?'||actualChar->character=='%')
-			{
-				Tokenizer_resetActualToken( self, actualTokenPointer,theTokens);
-				actualToken=*actualTokenPointer;
-				actualToken->mainType=kTokenMainTypeSymbol;
-				actualToken->text->_class->appendCharacter( (void*) actualToken->text->_components[0], actualChar->character);
-				Tokenizer_resetActualToken( self, actualTokenPointer,theTokens);
-				actualToken=*actualTokenPointer;
+				else inEscape=0;
+				actualToken->text->_class->appendCharacter( (void*) actualToken->text->_components[0], *actualChar);
 			}
 			else
 			{
-				actualToken->mainType=kTokenMainTypeWord;
-				actualToken->text->_class->appendCharacter( (void*) actualToken->text->_components[0], actualChar->character);
+				if(*actualChar=='\''||*actualChar=='"')
+				{
+					if(*actualChar=='\'')inChar=1;
+					if(*actualChar=='"')inChars=1;
+					actualToken->mainType=kTokenMainTypeSymbol;
+					actualToken->text->_class->appendCharacter( (void*) actualToken->text->_components[0], *actualChar);
+					Tokenizer_resetActualToken( self, actualTokenPointer,theTokens);
+					actualToken=*actualTokenPointer;
+					actualToken->mainType=kTokenMainTypeString;
+				}
+				else if(*actualChar==' '||*actualChar=='\t'||*actualChar=='\n'||*actualChar=='\r')
+				{
+					Tokenizer_resetActualToken( self, actualTokenPointer,theTokens);
+					actualToken=*actualTokenPointer;
+				}
+				else if(*actualChar=='*'||*actualChar=='/'||*actualChar=='+'||*actualChar=='-'||*actualChar=='='||*actualChar=='|'||*actualChar=='&'||*actualChar=='.'||*actualChar==','||*actualChar==':'||*actualChar==';'||*actualChar=='<'||*actualChar=='>'||*actualChar=='{'||*actualChar=='}'||*actualChar=='['||*actualChar==']'||*actualChar=='('||*actualChar==')'||*actualChar=='^'||*actualChar=='!'||*actualChar=='#'||*actualChar=='?'||*actualChar=='%')
+				{
+					Tokenizer_resetActualToken( self, actualTokenPointer,theTokens);
+					actualToken=*actualTokenPointer;
+					actualToken->mainType=kTokenMainTypeSymbol;
+					actualToken->text->_class->appendCharacter( (void*) actualToken->text->_components[0], *actualChar);
+					Tokenizer_resetActualToken( self, actualTokenPointer,theTokens);
+					actualToken=*actualTokenPointer;
+				}
+				else
+				{
+					actualToken->mainType=kTokenMainTypeWord;
+					actualToken->text->_class->appendCharacter( (void*) actualToken->text->_components[0], *actualChar);
+				}
 			}
+			++actualChar;
 		}
-		actualChar=actualChar->next;
 	}
 	Tokenizer_resetActualToken( self, actualTokenPointer,theTokens);
 	actualToken=*actualTokenPointer;
@@ -3173,12 +3105,11 @@ void Tokenizer_destruct (struct Tokenizer* self )
 }
 void Tokenizer_retain (struct Tokenizer* self ) 
 {
-	self->retainCount=self->retainCount+1;
+	++self->retainCount;
 }
 void Tokenizer_release (struct Tokenizer* self ) 
 {
-	self->retainCount=self->retainCount-1;
-	if(self->retainCount==0)
+	if(--self->retainCount==0)
 	{
 		self->_class->destruct( (void*) self->_components[0] );
 		free_object(self);
@@ -3258,12 +3189,11 @@ void Constants_destruct (struct Constants* self )
 }
 void Constants_retain (struct Constants* self ) 
 {
-	self->retainCount=self->retainCount+1;
+	++self->retainCount;
 }
 void Constants_release (struct Constants* self ) 
 {
-	self->retainCount=self->retainCount-1;
-	if(self->retainCount==0)
+	if(--self->retainCount==0)
 	{
 		self->_class->destruct( (void*) self->_components[0] );
 		free_object(self);
@@ -3350,12 +3280,11 @@ void FileElements_describe (struct FileElements* self )
 }
 void FileElements_retain (struct FileElements* self ) 
 {
-	self->retainCount=self->retainCount+1;
+	++self->retainCount;
 }
 void FileElements_release (struct FileElements* self ) 
 {
-	self->retainCount=self->retainCount-1;
-	if(self->retainCount==0)
+	if(--self->retainCount==0)
 	{
 		self->_class->destruct( (void*) self->_components[0] );
 		free_object(self);
@@ -3491,12 +3420,11 @@ void ClassElements_describe (struct ClassElements* self )
 }
 void ClassElements_retain (struct ClassElements* self ) 
 {
-	self->retainCount=self->retainCount+1;
+	++self->retainCount;
 }
 void ClassElements_release (struct ClassElements* self ) 
 {
-	self->retainCount=self->retainCount-1;
-	if(self->retainCount==0)
+	if(--self->retainCount==0)
 	{
 		self->_class->destruct( (void*) self->_components[0] );
 		free_object(self);
@@ -3614,12 +3542,11 @@ void Token_describe (struct Token* self )
 }
 void Token_retain (struct Token* self ) 
 {
-	self->retainCount=self->retainCount+1;
+	++self->retainCount;
 }
 void Token_release (struct Token* self ) 
 {
-	self->retainCount=self->retainCount-1;
-	if(self->retainCount==0)
+	if(--self->retainCount==0)
 	{
 		self->_class->destruct( (void*) self->_components[0] );
 		free_object(self);
@@ -3678,12 +3605,11 @@ void Line_describe (struct Line* self )
 }
 void Line_retain (struct Line* self ) 
 {
-	self->retainCount=self->retainCount+1;
+	++self->retainCount;
 }
 void Line_release (struct Line* self ) 
 {
-	self->retainCount=self->retainCount-1;
-	if(self->retainCount==0)
+	if(--self->retainCount==0)
 	{
 		self->_class->destruct( (void*) self->_components[0] );
 		free_object(self);
@@ -3757,12 +3683,11 @@ void Scope_setNextScopeLink (struct Scope* self, struct CLString * theLink )
 }
 void Scope_retain (struct Scope* self ) 
 {
-	self->retainCount=self->retainCount+1;
+	++self->retainCount;
 }
 void Scope_release (struct Scope* self ) 
 {
-	self->retainCount=self->retainCount-1;
-	if(self->retainCount==0)
+	if(--self->retainCount==0)
 	{
 		self->_class->destruct( (void*) self->_components[0] );
 		free_object(self);

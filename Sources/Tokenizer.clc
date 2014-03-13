@@ -37,7 +37,7 @@ Tokenizer:CLObject
 		char inChars;
         char inClass;
 		char inEscape;
-		struct CLChar* actualChar;
+		char* actualChar;
 		Line* actualLine;
 		Line** actualLinePointer;
 		
@@ -54,9 +54,10 @@ Tokenizer:CLObject
 		inClass = 0;
 		inEscape = 0;
 				
-		actualChar = theString.head;
+		actualChar = theString.cstrPtr;
 		
-		while ( actualChar != NULL )
+		if (actualChar) {
+		while ( *actualChar )
 		{
 		
 			if ( actualLine.type == kLineTypeSetting || 
@@ -65,12 +66,12 @@ Tokenizer:CLObject
 			
 				// in case of setting or comment finish at new line
 
-				if ( actualChar->character == '\n' || actualChar->character == '\r' ) 
+				if ( *actualChar == '\n' || *actualChar == '\r' ) 
 				{
 					resetActualLine( actualLinePointer , theLines );
 					actualLine = *actualLinePointer;
 				}
-				else actualLine.text.appendCharacter( actualChar->character );
+				else actualLine.text.appendCharacter( *actualChar );
 			
 			}
 			else if ( actualLine.type == kLineTypeGeneral )
@@ -86,89 +87,89 @@ Tokenizer:CLObject
 					if ( inEscape == 0 )
 					{
 				
-						if ( actualChar->character == '\\' ) inEscape = 1;				
-						if ( inChar  == 1 && actualChar->character == '\'' ) inChar  = 0;
-						if ( inChars == 1 && actualChar->character == '"'  ) inChars = 0;
+						if ( *actualChar == '\\' ) inEscape = 1;				
+						if ( inChar  == 1 && *actualChar == '\'' ) inChar  = 0;
+						if ( inChars == 1 && *actualChar == '"'  ) inChars = 0;
 					
 					}
 					else inEscape = 0;
 					
-					actualLine.text.appendCharacter( actualChar->character );
+					actualLine.text.appendCharacter( *actualChar );
 				
 				}
 				else
 				{
 				
-					if ( actualChar->character == '#' )
+					if ( *actualChar == '#' )
 					{
 						// setting start
 						
 						if ( actualLine.text.length == 0 ) actualLine.type = kLineTypeSetting;
-						actualLine.text.appendCharacter( actualChar->character );
+						actualLine.text.appendCharacter( *actualChar );
 						
 					}
-					else if ( actualChar->character == '/' )
+					else if ( *actualChar == '/' )
 					{
 						// comment start
 						
 						if ( actualLine.text.length == 0 ) actualLine.type = kLineTypeComment;
-						actualLine.text.appendCharacter( actualChar->character );
+						actualLine.text.appendCharacter( *actualChar );
 						
 					}
-					else if ( actualChar->character == ';' )
+					else if ( *actualChar == ';' )
 					{
 						// block end
 						
-						actualLine.text.appendCharacter( actualChar->character );
+						actualLine.text.appendCharacter( *actualChar );
 						resetActualLine( actualLinePointer , theLines );
 						actualLine = *actualLinePointer;
 
 					}
-					else if ( actualChar->character == '{' )
+					else if ( *actualChar == '{' )
 					{
 						// block start
                         
 						if ( inClass == 0 ) { actualLine.type = kLineTypeClassDef; inClass = 1; }
 						resetActualLine( actualLinePointer , theLines );
 						actualLine.type = kLineTypeBlockStart;
-						actualLine.text.appendCharacter( actualChar->character );
+						actualLine.text.appendCharacter( *actualChar );
 						resetActualLine( actualLinePointer , theLines );
 						actualLine = *actualLinePointer;
 						
 					}
-					else if ( actualChar->character == '}' )
+					else if ( *actualChar == '}' )
 					{
 						// block end
 						
 						resetActualLine( actualLinePointer , theLines );
 						actualLine.type = kLineTypeBlockEnd;
-						actualLine.text.appendCharacter( actualChar->character );
+						actualLine.text.appendCharacter( *actualChar );
 						resetActualLine( actualLinePointer , theLines );
 						actualLine = *actualLinePointer;
 
 					}
-					else if ( actualChar->character == '\'' || actualChar->character == '"' )
+					else if ( *actualChar == '\'' || *actualChar == '"' )
 					{
 						// char or chars
 						
-						if ( actualChar->character == '\'' ) inChar  = 1;
-						if ( actualChar->character == '"'  ) inChars = 1;
-						actualLine.text.appendCharacter( actualChar->character );
+						if ( *actualChar == '\'' ) inChar  = 1;
+						if ( *actualChar == '"'  ) inChars = 1;
+						actualLine.text.appendCharacter( *actualChar );
 						
 					}
-					else if ( actualChar->character == ' ' || actualChar->character == '\t' )
+					else if ( *actualChar == ' ' || *actualChar == '\t' )
 					{
 						// line starting white space filtering
 						
-						if ( actualLine.text.length > 0 ) actualLine.text.appendCharacter( actualChar->character );
+						if ( actualLine.text.length > 0 ) actualLine.text.appendCharacter( *actualChar );
 						
 					}
-					else if ( actualChar->character != '\r' && actualChar->character != '\n' )
+					else if ( *actualChar != '\r' && *actualChar != '\n' )
 					{
 					
 						// new line filtering
 						
-						actualLine.text.appendCharacter( actualChar->character );
+						actualLine.text.appendCharacter( *actualChar );
 
 					}
 				
@@ -176,8 +177,9 @@ Tokenizer:CLObject
 			
 			}
 
-			actualChar = actualChar->next;
+			++actualChar;
 		
+		}
 		}
 		
 		// add remaining line
@@ -231,7 +233,7 @@ Tokenizer:CLObject
 		char inChar;
 		char inChars;
 		char inEscape;
-		struct CLChar* actualChar;
+		char* actualChar;
 		Token* actualToken;
 		Token** actualTokenPointer;
 		
@@ -247,9 +249,10 @@ Tokenizer:CLObject
 		inChars = 0;
 		inEscape = 0;
 		
-		actualChar = theString.head;
+		actualChar = theString.cstrPtr;
 
-		while ( actualChar != NULL )
+		if (actualChar) {
+		while ( *actualChar )
 		{
 				
 			if ( inChars == 1 || inChar == 1 )
@@ -260,9 +263,9 @@ Tokenizer:CLObject
 				if ( inEscape == 0 )
 				{
 			
-					if ( actualChar->character == '\\' ) inEscape = 1;
+					if ( *actualChar == '\\' ) inEscape = 1;
 					
-					if ( inChar  == 1 && actualChar->character == '\'' ) 
+					if ( inChar  == 1 && *actualChar == '\'' ) 
 					{
 						inChar  = 0;
 						resetActualToken( actualTokenPointer , theTokens );
@@ -270,7 +273,7 @@ Tokenizer:CLObject
 						actualToken.mainType = kTokenMainTypeSymbol;
 					}
 
-					if ( inChars == 1 && actualChar->character == '"'  ) 
+					if ( inChars == 1 && *actualChar == '"'  ) 
 					{
 						inChars = 0;
 						resetActualToken( actualTokenPointer , theTokens );
@@ -283,23 +286,23 @@ Tokenizer:CLObject
 				
 				// add char to char or char string
 				
-				actualToken.text.appendCharacter( actualChar->character );
+				actualToken.text.appendCharacter( *actualChar );
 
 			}
 			else
 			{
 			
-				if ( actualChar->character == '\'' || actualChar->character == '"' )
+				if ( *actualChar == '\'' || *actualChar == '"' )
 				{
 					// char or chars
 					
-					if ( actualChar->character == '\'' ) inChar  = 1;
-					if ( actualChar->character == '"'  ) inChars = 1;
+					if ( *actualChar == '\'' ) inChar  = 1;
+					if ( *actualChar == '"'  ) inChars = 1;
 					
 					// add quotation symbol
 					
 					actualToken.mainType = kTokenMainTypeSymbol;
-					actualToken.text.appendCharacter( actualChar->character );
+					actualToken.text.appendCharacter( *actualChar );
 					resetActualToken( actualTokenPointer , theTokens );
 					actualToken = *actualTokenPointer;
 					
@@ -308,10 +311,10 @@ Tokenizer:CLObject
 					actualToken.mainType = kTokenMainTypeString;
 					
 				}
-				else if (	actualChar->character == ' '	||
-							actualChar->character == '\t'	||
-							actualChar->character == '\n'	||
-							actualChar->character == '\r'	)
+				else if (	*actualChar == ' '	||
+							*actualChar == '\t'	||
+							*actualChar == '\n'	||
+							*actualChar == '\r'	)
 				{
 				
 					// add token if not empty
@@ -320,30 +323,30 @@ Tokenizer:CLObject
 					actualToken = *actualTokenPointer;
 				
 				}
-				else if (	actualChar->character == '*'	||
-							actualChar->character == '/'	||
-							actualChar->character == '+'	||
-							actualChar->character == '-'	||
-							actualChar->character == '='	||
-							actualChar->character == '|'	||
-							actualChar->character == '&'	||
-							actualChar->character == '.'	||
-							actualChar->character == ','	||
-							actualChar->character == ':'	||
-							actualChar->character == ';'	||
-							actualChar->character == '<'	||
-							actualChar->character == '>'	||
-							actualChar->character == '{'	||
-							actualChar->character == '}'	||
-							actualChar->character == '['	||
-							actualChar->character == ']'	||
-							actualChar->character == '('	||
-							actualChar->character == ')'	||
-							actualChar->character == '^'	||
-							actualChar->character == '!'	||
-							actualChar->character == '#'	||
-							actualChar->character == '?'	||
-							actualChar->character == '%'	 )
+				else if (	*actualChar == '*'	||
+							*actualChar == '/'	||
+							*actualChar == '+'	||
+							*actualChar == '-'	||
+							*actualChar == '='	||
+							*actualChar == '|'	||
+							*actualChar == '&'	||
+							*actualChar == '.'	||
+							*actualChar == ','	||
+							*actualChar == ':'	||
+							*actualChar == ';'	||
+							*actualChar == '<'	||
+							*actualChar == '>'	||
+							*actualChar == '{'	||
+							*actualChar == '}'	||
+							*actualChar == '['	||
+							*actualChar == ']'	||
+							*actualChar == '('	||
+							*actualChar == ')'	||
+							*actualChar == '^'	||
+							*actualChar == '!'	||
+							*actualChar == '#'	||
+							*actualChar == '?'	||
+							*actualChar == '%'	 )
 				{
 				
 					// add token if not empty
@@ -354,7 +357,7 @@ Tokenizer:CLObject
 					// add symbol token
 					
 					actualToken.mainType = kTokenMainTypeSymbol;
-					actualToken.text.appendCharacter( actualChar->character );
+					actualToken.text.appendCharacter( *actualChar );
 					resetActualToken( actualTokenPointer , theTokens );
 					actualToken = *actualTokenPointer;
 
@@ -365,14 +368,15 @@ Tokenizer:CLObject
 					// add character into word token
 				
 					actualToken.mainType = kTokenMainTypeWord;
-					actualToken.text.appendCharacter( actualChar->character );
+					actualToken.text.appendCharacter( *actualChar );
 
 				}
 				
 			}
 		
-			actualChar = actualChar->next;
+			++actualChar;
 		
+		}
 		}
 		
 		// add remaining token

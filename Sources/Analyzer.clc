@@ -130,7 +130,7 @@ Analyzer:CLObject
 			lastToken = ( Token* ) lastData;
 			
 			if ( lastToken.mainType == kTokenMainTypeSymbol &&
-				(lastToken.text.head)->character == ';' )
+				lastToken.text.startsWith(';') )
 			{
 
 				// member definition line, name is last token
@@ -353,9 +353,10 @@ Analyzer:CLObject
 			if ( oneToken.mainType == kTokenMainTypeSymbol )
             {
 
-                if ( ( oneToken.text.head )->character == ';' ||
-                     ( oneToken.text.head )->character == '[' ||
-                     ( oneToken.text.head )->character == ')') return lastWord;
+				  char c = oneToken.text.cstrPtr ? *(oneToken.text.cstrPtr) : '\0';
+                if ( c == ';' ||
+                     c == '[' ||
+                     c == ')') return lastWord;
 
             }
 			else if ( oneToken.mainType == kTokenMainTypeWord ) lastWord = oneToken.text;
@@ -384,7 +385,7 @@ Analyzer:CLObject
             
 			oneToken = ( Token* ) object;
 			
-			if ( oneToken.mainType == kTokenMainTypeSymbol && (oneToken.text.head)->character == '(' ) return lastWord;
+			if ( oneToken.mainType == kTokenMainTypeSymbol && oneToken.text.startsWith('(') ) return lastWord;
 			else if ( oneToken.mainType == kTokenMainTypeWord ) lastWord = oneToken.text;
 
 		}
@@ -450,9 +451,10 @@ Analyzer:CLObject
 				
 					// looking for member names
 				
-					if ( ( oneToken.text.head )->character == ';' || 
-						 ( oneToken.text.head )->character == '[' || 
-						 ( oneToken.text.head )->character == ')')
+					char c = oneToken.text.cstrPtr ? *(oneToken.text.cstrPtr) : '\0';
+					if ( c == ';' || 
+						 c == '[' || 
+						 c == ')')
 					{
 
 						lastToken.subType  = kTokenSubTypeVariable;
@@ -648,7 +650,9 @@ Analyzer:CLObject
 				if ( lastToken.mainType == kTokenMainTypeWord )
 				{
 				
-					if ( (oneToken.text.head)->character == '(' )
+					char c = oneToken.text.cstrPtr ? *(oneToken.text.cstrPtr) : '\0';
+					
+					if ( c == '(' )
 					{
 					
 						// method name
@@ -658,9 +662,9 @@ Analyzer:CLObject
 
 					}
 
-					if ( (oneToken.text.head)->character == ',' ||
-						 (oneToken.text.head)->character == '[' || 
-						 (oneToken.text.head)->character == ')' )
+					if ( c == ',' ||
+						 c == '[' || 
+						 c == ')' )
 					{
 					
 						// variable
@@ -762,7 +766,7 @@ Analyzer:CLObject
                 else if ( oneToken.mainType == kTokenMainTypeSymbol )
                 {
                 
-                    if ( (oneToken.text.head)->character == '-' )
+                    if ( oneToken.text.startsWith('-') )
                     {
 					
 						// checking for struct accessor
@@ -771,7 +775,7 @@ Analyzer:CLObject
                         {
 
 							nextToken = ( Token* ) tokenLink->next->data;
-                            if ( nextToken->mainType == kTokenMainTypeSymbol && (nextToken.text.head)->character == '>' )
+                            if ( nextToken->mainType == kTokenMainTypeSymbol && nextToken.text.startsWith('>') )
                             {
 							
                                 oneToken.subType  = kTokenSubTypeStructAccessor;
@@ -789,7 +793,7 @@ Analyzer:CLObject
 					
 						// checking for scopes
                     
-                        if ( (oneToken.text.head)->character == '{' )
+                        if ( oneToken.text.startsWith('{') )
                         {
 						
                             // add new scope level
@@ -815,7 +819,7 @@ Analyzer:CLObject
                             scope = oneScope;
 							
                         }
-                        else if ( (oneToken.text.head)->character == '}' )
+                        else if ( oneToken.text.startsWith('}') )
                         {
 													
 							// set link id of closing bracket, creator adds for each ending
@@ -899,7 +903,7 @@ Analyzer:CLObject
         
 			dbleToken = ( Token* ) tokenLink->next->next->next->next->next->data;
             
-            if ( (dbleToken.text.head)->character == ':' )
+            if ( dbleToken.text.startsWith(':') )
             {
 
                 // for cycle is a for each loop
@@ -945,7 +949,7 @@ Analyzer:CLObject
                             containerId:appendString( oneToken.text );
                             oneToken.mainType = kTokenMainTypeUndefined;
                         }
-                        else if ( oneToken.mainType == kTokenMainTypeSymbol && (oneToken.text.head)->character == '.' )
+                        else if ( oneToken.mainType == kTokenMainTypeSymbol && oneToken.text.startsWith('.') )
                         {
                             containerId:appendCString( "->" );
                             oneToken.mainType = kTokenMainTypeUndefined;
@@ -1134,7 +1138,7 @@ Analyzer:CLObject
 			nextToken = ( Token* ) tokenLink->next->data;
 			wordToken = ( Token* ) tokenLink->next->next->data;
 
-            if ( (nextToken.text.head)->character == ':' && wordToken.mainType == kTokenMainTypeWord )
+            if ( nextToken.text.startsWith(':') && wordToken.mainType == kTokenMainTypeWord )
             {
             
                 // explicit class call
@@ -1185,7 +1189,7 @@ Analyzer:CLObject
                 }
 
             }
-            else if ( (nextToken.text.head)->character == '*' && wordToken.mainType == kTokenMainTypeWord )
+            else if ( nextToken.text.startsWith('*') && wordToken.mainType == kTokenMainTypeWord )
             {
             
                 // type declaration
@@ -1199,7 +1203,7 @@ Analyzer:CLObject
                 *theLinkAddress = tokenLink->next->next;
                 
             }
-            else if ( (nextToken.text.head)->character == '*' && (wordToken.text.head)->character == ')' )
+            else if ( nextToken.text.startsWith('*') && wordToken.text.startsWith(')') )
             {
             
                 // casting
@@ -1240,7 +1244,7 @@ Analyzer:CLObject
 			
 			// check for method opening or reference
 			
-			if ( nextToken->mainType == kTokenMainTypeSymbol && (nextToken.text.head)->character == '(' )
+			if ( nextToken->mainType == kTokenMainTypeSymbol && nextToken.text.startsWith('(') )
 			{
 				// hide method opening from creator
 				nextToken->mainType = kTokenMainTypeUndefined;
@@ -1375,7 +1379,7 @@ Analyzer:CLObject
             
                 oneToken = ( Token* ) tokenLink->data;
                 
-                if ( oneToken.mainType == kTokenMainTypeSymbol && (oneToken.text.head)->character == ':' )
+                if ( oneToken.mainType == kTokenMainTypeSymbol && oneToken.text.startsWith(':') )
                 {
                 
                     // explicit call
@@ -1386,7 +1390,7 @@ Analyzer:CLObject
                     startToken.mainType = kTokenMainTypeUndefined;
                 
                 }
-                else if ( oneToken.mainType == kTokenMainTypeSymbol && (oneToken.text.head)->character == '.' )
+                else if ( oneToken.mainType == kTokenMainTypeSymbol && oneToken.text.startsWith('.') )
                 {
                 
                     // explicit call
@@ -1409,7 +1413,7 @@ Analyzer:CLObject
                     {
 
 						nextToken = ( Token* ) tokenLink->next->data;
-                        if ( nextToken.mainType == kTokenMainTypeSymbol && (nextToken.text.head)->character == '(' )
+                        if ( nextToken.mainType == kTokenMainTypeSymbol && nextToken.text.startsWith('(') )
                         {
                         
                             nextToken.mainType = kTokenMainTypeUndefined;

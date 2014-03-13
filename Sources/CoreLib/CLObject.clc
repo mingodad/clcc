@@ -29,7 +29,7 @@ CLObject
 	void retain ( )
 	{
 
-		retainCount = retainCount + 1;
+		++retainCount;
 
 	}
 	
@@ -38,10 +38,8 @@ CLObject
 
 	void release ( )
 	{
-
-		retainCount = retainCount - 1;
 		
-		if ( retainCount == 0 )
+		if ( --retainCount == 0 )
 		{
 
 			self.destruct( );

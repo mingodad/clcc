@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
-#include "CLChar.h"
+#include <string.h>
 #include "CLLink.h"
 #define kTokenMainTypeUndefined			0
 #define kTokenMainTypeWord				1
@@ -135,8 +135,7 @@ struct CLString
 {
 	struct CLString_Class* _class;
 	void** _components;
-	struct CLChar * head ; 
-	struct CLChar * last ; 
+	char * cstrPtr ; 
 	unsigned long length ; 
 	struct CLObject_Class* _class_CLObject;
 	void** _components_CLObject;
@@ -154,6 +153,7 @@ struct CLString_Class
 	void 	(*appendCharacter) (struct CLString*, char  ) ;
 	void 	(*appendString) (struct CLString*, struct CLString *  ) ;
 	void 	(*appendCString) (struct CLString*, char *  ) ;
+	void 	(*appendCStringWithSize) (struct CLString*, char *  , size_t  ) ;
 	void 	(*removeAllCharacters) (struct CLString* ) ;
 	void 	(*readFile) (struct CLString*, struct CLString *  ) ;
 	void 	(*readFilePointer) (struct CLString*, FILE *  ) ;
@@ -163,7 +163,9 @@ struct CLString_Class
 	struct CLString * 	(*stringByRemovingExtension) (struct CLString* ) ;
 	struct CLString * 	(*stringByRemovingLastPathComponent) (struct CLString* ) ;
 	char 	(*containsString) (struct CLString*, struct CLString *  ) ;
-	unsigned long 	(*indexOfString) (struct CLString*, struct CLString *  ) ;
+	int 	(*indexOfString) (struct CLString*, struct CLString *  ) ;
+	int 	(*startsWith) (struct CLString*, char  ) ;
+	int 	(*endsWith) (struct CLString*, char  ) ;
 	char 	(*equals) (struct CLString*, struct CLString *  ) ;
 	char * 	(*cString) (struct CLString* ) ;
 	void 	(*describe) (struct CLString* ) ;
@@ -580,6 +582,7 @@ void CLString_destruct (struct CLString* self ) ;
 void CLString_appendCharacter (struct CLString* self, char theCharacter ) ;
 void CLString_appendString (struct CLString* self, struct CLString * theString ) ;
 void CLString_appendCString (struct CLString* self, char * theString ) ;
+void CLString_appendCStringWithSize (struct CLString* self, char * theString , size_t size ) ;
 void CLString_removeAllCharacters (struct CLString* self ) ;
 void CLString_readFile (struct CLString* self, struct CLString * thePath ) ;
 void CLString_readFilePointer (struct CLString* self, FILE * thePointer ) ;
@@ -589,7 +592,9 @@ struct CLString * CLString_stringWithLastPathComponent (struct CLString* self ) 
 struct CLString * CLString_stringByRemovingExtension (struct CLString* self ) ;
 struct CLString * CLString_stringByRemovingLastPathComponent (struct CLString* self ) ;
 char CLString_containsString (struct CLString* self, struct CLString * theString ) ;
-unsigned long CLString_indexOfString (struct CLString* self, struct CLString * theSearchString ) ;
+int CLString_indexOfString (struct CLString* self, struct CLString * theSearchString ) ;
+int CLString_startsWith (struct CLString* self, char c ) ;
+int CLString_endsWith (struct CLString* self, char c ) ;
 char CLString_equals (struct CLString* self, struct CLString * theStringB ) ;
 char * CLString_cString (struct CLString* self ) ;
 void CLString_describe (struct CLString* self ) ;
