@@ -6,7 +6,7 @@
 #include "Token.clc"
 
 
-Tokenizer:CLObject
+class Tokenizer:CLObject
 {
 
 

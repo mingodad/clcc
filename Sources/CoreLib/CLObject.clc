@@ -1,4 +1,4 @@
-CLObject
+class CLObject
 {
 
 	unsigned long retainCount;

@@ -27,7 +27,7 @@
 #define kTokenSubTypeStructAccessor		22
 
 
-Token:CLObject
+class Token:CLObject
 {
 
 	CLString*	text;

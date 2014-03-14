@@ -2,7 +2,7 @@
 #include "CLObject.clc"
 
 
-CLString:CLObject
+class CLString:CLObject
 {
 
 	char *cstrPtr;		// pointer to c string

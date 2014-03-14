@@ -2162,7 +2162,7 @@ void Analyzer_analyzeClassDef (struct Analyzer* self, struct Line * theLine , st
 	link11=theLine->tokens->head;while( link11!=NULL){object=link11->data; 
 	
 		oneToken=(cast_object( &Token_ClassInstance , object));
-		if(oneToken->mainType==kTokenMainTypeWord)
+		if((oneToken->mainType==kTokenMainTypeWord)&&(!oneToken->text->_class->equals( (void*) oneToken->text->_components[0], self->constants->classKeywordString)))
 		{
 			CLObjectList_addObject(theParentClassNamesList, (cast_object( &CLObject_ClassInstance , oneToken->text)));
 			CLObjectList_addObject(theUsedClassNamesList, (cast_object( &CLObject_ClassInstance , oneToken->text)));
@@ -3169,6 +3169,8 @@ void Constants_init (struct Constants* self )
 	CLString_initWithCString(self->endifString, "#endif");
 	self->classString=CLString_alloc( );
 	CLString_initWithCString(self->classString, ".clc");
+	self->classKeywordString=CLString_alloc( );
+	CLString_initWithCString(self->classKeywordString, "class");
 	self->allocString=CLString_alloc( );
 	CLString_initWithCString(self->allocString, "alloc");
 	self->settingString=CLString_alloc( );
@@ -3184,6 +3186,7 @@ void Constants_destruct (struct Constants* self )
 	CLString_release(self->ifdefString );
 	CLString_release(self->endifString );
 	CLString_release(self->classString );
+	CLString_release(self->classKeywordString );
 	CLString_release(self->allocString );
 	CLString_release(self->settingString );
 }

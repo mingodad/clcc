@@ -362,6 +362,7 @@ struct Constants
 	struct CLString * ifdefString ; 
 	struct CLString * endifString ; 
 	struct CLString * classString ; 
+	struct CLString * classKeywordString ; 
 	struct CLString * allocString ; 
 	struct CLString * settingString ; 
 	struct CLObject_Class* _class_CLObject;

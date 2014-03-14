@@ -6,7 +6,7 @@
 #include "CLStringObjectList.clc"
 
 
-Creator:CLObject
+class Creator:CLObject
 {
 
 	// creates general class and general instance structures

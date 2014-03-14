@@ -2,7 +2,7 @@
 #include "CLString.clc"
 
 
-Constants:CLObject
+class Constants:CLObject
 {
 
     long        linkId;
@@ -15,6 +15,7 @@ Constants:CLObject
 	CLString*	ifdefString;
 	CLString*	endifString;
 	CLString* 	classString;
+	CLString* 	classKeywordString;
     CLString*   allocString;
     CLString*   settingString;
 
@@ -50,6 +51,9 @@ Constants:CLObject
 		classString:alloc( );		// needs release
 		classString:initWithCString( ".clc" );
 
+		classKeywordString:alloc( );		// needs release
+		classKeywordString:initWithCString( "class" );
+
 		allocString:alloc( );		// needs release
 		allocString:initWithCString( "alloc" );
     
@@ -70,6 +74,7 @@ Constants:CLObject
 		ifdefString:release( );
 		endifString:release( );
 		classString:release( );
+		classKeywordString:release( );
         allocString:release( );
         settingString:release( );
     

@@ -3,7 +3,7 @@
 #include "CLObjectList.clc"
 
 
-CLStringObjectList:CLObject
+class CLStringObjectList:CLObject
 {
 
 

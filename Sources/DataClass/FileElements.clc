@@ -2,7 +2,7 @@
 #include "CLObjectList.clc"
 
 
-FileElements:CLObject
+class FileElements:CLObject
 {
 
 	CLObjectList* classesList;

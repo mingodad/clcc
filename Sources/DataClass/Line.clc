@@ -10,7 +10,7 @@
 #define kLineTypeComment	5
 
 
-Line:CLObject
+class Line:CLObject
 {
 
 	char            type;

@@ -9,7 +9,7 @@
 #include "CLStringObjectList.clc"
 
 
-Analyzer:CLObject
+class Analyzer:CLObject
 {
 
     Constants* constants;
@@ -281,7 +281,8 @@ Analyzer:CLObject
 
 			oneToken = ( Token* ) object;
 			
-			if ( oneToken.mainType == kTokenMainTypeWord ) 
+			if ( (oneToken.mainType == kTokenMainTypeWord) && 
+					(!oneToken.text.equals(constants.classKeywordString))) 
 			{
 			
 				theParentClassNamesList:addObject( ( CLObject* ) oneToken.text );

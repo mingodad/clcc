@@ -8,7 +8,7 @@
 #define kScopeTypeForEach   2
 
 
-Scope:CLObject
+class Scope:CLObject
 {
 
     char            type;

@@ -1,7 +1,7 @@
 #include "CLLink.h"
 #include "CLObject.clc"
 
-CLObjectList:CLObject
+class CLObjectList:CLObject
 {
 
 	struct CLLink* 	head;		// pointer to first link
